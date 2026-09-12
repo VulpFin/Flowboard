@@ -5,7 +5,7 @@ planner, an AI assistant that runs on **your own** provider keys, calendar
 export/sync, and TG11 single sign-on readiness.
 
 * Production: https://flowboard.fyi (old `flowboard.vulpfin.com` redirects)
-* Docs: [`docs/`](docs/) — DEPLOYMENT, ENVIRONMENT, AI_PROVIDERS, CALENDARS,
+* Docs: [`docs/`](docs/) — DEPLOYMENT, ENVIRONMENT, AI_PROVIDERS, CALENDARS, ECOSYSTEM_INCIDENTS,
   BOARDS, TG11_SSO, SECURITY, DOMAIN_MIGRATION, ROLLBACK
 * Licence: AGPL-3.0-or-later · © 2025-2026 TG11
 
