@@ -12,3 +12,5 @@ node_modules/
 flowboard_ai_log.jsonl
 test*.vfdb*
 test__*.vfheap
+Claude outputs/*
+SSL/*
