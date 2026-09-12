@@ -118,6 +118,12 @@ def create_user(
     db.flush()
     ensure_profile(db, user)
     ensure_default_board(db, user)
+    try:
+        from .tutorial import seed_tutorial
+
+        seed_tutorial(db, user)
+    except Exception:  # the tutorial is a nicety, never a reason to fail sign-up
+        pass
     return user
 
 

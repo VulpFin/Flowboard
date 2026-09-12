@@ -2,6 +2,15 @@
 {% block settings %}
 <h2>AI providers</h2>
 <p class="muted">Bring your own keys. Keys are encrypted at rest (AES-256-GCM), never shown again after saving, and only ever used server-side on your behalf.</p>
+{% if oidc_enabled %}
+<div class="panel row" style="align-items:center;gap:1rem">
+  <div>
+    <b>TG11 key vault</b>
+    <div class="muted small">Keys saved in your <a href="{{ tg11_issuer }}/vault" target="_blank" rel="noopener">TG11 account vault</a> can be copied here so every TG11 app shares one set of keys.{% if user.profile.tg11_vault_synced_at %} Last synced {{ user.profile.tg11_vault_synced_at.strftime('%Y-%m-%d %H:%M') }}.{% endif %}</div>
+  </div>
+  <a class="btn" href="/auth/tg11/login?sync=1" title="Signs you in at TG11 (asks for the tg11.ai permission) and imports the keys">Sync from TG11</a>
+</div>
+{% endif %}
 <table class="table providers">
   <tr><th>Provider</th><th>Status</th><th>Default model</th><th>Capabilities</th><th></th></tr>
   {% for r in rows %}

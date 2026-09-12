@@ -4,6 +4,6 @@
 from .common import utcnow, new_uuid  # noqa: F401
 from .user import User, UserProfile, IdentityLink, PasswordResetToken, UserSession  # noqa: F401
 from .board import Board, BoardMembership, BoardRole  # noqa: F401
-from .task import Task, TaskActivity  # noqa: F401
+from .task import Task, TaskActivity, TaskReflection  # noqa: F401
 from .ai import AIProviderCredential, AIUsageRecord, AIChangeSet  # noqa: F401
 from .calendar import CalendarConnection, CalendarEventLink, CalendarFeedToken  # noqa: F401

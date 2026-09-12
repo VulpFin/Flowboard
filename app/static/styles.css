@@ -108,3 +108,45 @@ tr.current{background:#131a3c}
 /* focus modal */
 .focusmodal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:1000}
 .focuscard{background:var(--panel);border:1px solid var(--line);border-radius:1rem;padding:1rem;min-width:300px}
+
+/* ---- 2.1: collapsible columns, expandable cards, schedule, reflections ---- */
+.boardtools { float: right; display: inline-flex; gap: .35rem; }
+button.mini, input.mini, select.mini { font-size: .78rem; padding: .15rem .45rem; }
+.colhead { cursor: pointer; user-select: none; display: flex; align-items: center; gap: .4rem; }
+.colhead .caret { display: inline-block; transition: transform .15s; }
+.col.collapsed .colhead .caret { transform: rotate(-90deg); }
+.col.collapsed .dcol { display: none; }
+.col.collapsed { opacity: .85; }
+.cardhead { cursor: pointer; display: grid; grid-template-columns: auto 1fr; column-gap: .4rem; align-items: baseline; }
+.cardhead .caret { transition: transform .15s; }
+.cardhead .meta { grid-column: 2; }
+.cardwrap.open .cardhead .caret { transform: rotate(90deg); }
+.cardbody { display: none; margin-top: .4rem; }
+.cardwrap.open .cardbody { display: block; }
+.card .schedform { display: inline-flex; gap: .2rem; align-items: center; }
+.instructions { margin: .4rem 0; padding: .4rem .6rem; border-left: 3px solid var(--accent, #5cdfb7); background: rgba(92,223,183,.06); border-radius: 4px; }
+.instructions summary { cursor: pointer; font-weight: 600; }
+.md ol, .md ul { padding-left: 1.2rem; margin: .3rem 0; }
+.md p { margin: .3rem 0; }
+.md code { font-size: .85em; }
+.card.htmx-request { opacity: .6; }
+.reflectcard { max-width: 560px; width: 92vw; text-align: left; }
+.reflectcard label { display: block; margin-bottom: .55rem; font-weight: 600; }
+.reflectcard label .row { font-weight: 400; margin-top: .2rem; }
+.seg { display: flex; gap: .4rem; flex-wrap: wrap; }
+.segopt { display: inline-flex; align-items: center; gap: .2rem; padding: .15rem .5rem; border: 1px solid rgba(255,255,255,.15); border-radius: 999px; font-weight: 400; cursor: pointer; }
+.segopt:has(input:checked) { border-color: var(--accent, #5cdfb7); background: rgba(92,223,183,.15); }
+.weekgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: .6rem; margin: .8rem 0; }
+.daycol { border: 1px solid rgba(255,255,255,.1); border-radius: 8px; padding: .5rem .6rem; background: rgba(255,255,255,.02); }
+.daycol.off { opacity: .5; }
+.daycol.istoday { border-color: var(--accent, #5cdfb7); }
+.daycol.over .capbar span { background: #e0645c; }
+.daycol h3 { margin: 0 0 .3rem; font-size: 1rem; }
+.capbar { height: 6px; background: rgba(255,255,255,.08); border-radius: 3px; overflow: hidden; margin: .2rem 0; }
+.capbar span { display: block; height: 100%; background: var(--accent, #5cdfb7); }
+.schedtask { padding: .35rem .4rem; margin: .3rem 0; border-radius: 6px; background: rgba(255,255,255,.04); border-left: 3px solid rgba(255,255,255,.15); }
+.schedtask.high { border-left-color: #f0b35c; }
+.schedtask.other { opacity: .6; border-left-style: dashed; }
+.schedtable input[type=number] { width: 6rem; }
+.flash.autohide { position: fixed; bottom: 1rem; right: 1rem; z-index: 50; box-shadow: 0 4px 16px rgba(0,0,0,.4); }
+@media (max-width: 700px) { .boardtools { float: none; display: flex; margin-top: .3rem; } }

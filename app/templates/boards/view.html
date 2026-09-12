@@ -9,6 +9,7 @@
 </form>
 <a id="ics-link" class="linkbtn" href="/boards/{{ board.slug }}/plan.ics" title="Export the current plan to your calendar">Plan .ics</a>
 <a class="linkbtn" href="/boards/{{ board.slug }}/export.ics" title="Export every dated task on this board as an iCalendar file">Board .ics</a>
+<a class="linkbtn" href="/boards/{{ board.slug }}/schedule" title="Day-by-day schedule within your daily limits">Schedule</a>
 <a class="linkbtn" href="/boards/{{ board.slug }}/activity" title="History">Activity</a>
 {% if can_edit %}<a class="linkbtn" href="/boards/{{ board.slug }}/settings" title="Board settings">Board settings</a>{% endif %}
 {% endblock %}

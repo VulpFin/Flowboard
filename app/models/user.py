@@ -70,6 +70,12 @@ class UserProfile(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     calendar_default_duration_min: Mapped[int] = mapped_column(default=60, nullable=False)
     # Board defaults for new boards (JSON text)
     board_defaults_json: Mapped[str] = mapped_column(Text, default="{}", nullable=False)
+    # Work schedule: {"days": {"0": {"enabled": true, "start": "09:00", "end": "17:00", "max_min": 480, "max_high_min": 180}, ...}, "days_off": ["2026-12-25"], "auto_rollover": true}
+    work_schedule_json: Mapped[str] = mapped_column(Text, default="{}", nullable=False)
+    # Cached calibration summary derived from task_reflections
+    calibration_json: Mapped[str] = mapped_column(Text, default="{}", nullable=False)
+    tutorial_seeded: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    tg11_vault_synced_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
     user: Mapped["User"] = relationship(back_populates="profile")
 

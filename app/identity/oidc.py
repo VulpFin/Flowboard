@@ -45,6 +45,8 @@ class OIDCClaims:
     preferred_username: str
     name: str
     raw: Dict[str, Any]
+    access_token: str = ""
+    scope: str = ""
 
 
 class OIDCClient:
@@ -137,6 +139,8 @@ class OIDCClient:
             preferred_username=str(claims.get("preferred_username") or ""),
             name=str(claims.get("name") or ""),
             raw=dict(claims),
+            access_token=str(tokens.get("access_token") or ""),
+            scope=str(tokens.get("scope") or self.scopes),
         )
 
     def validate_id_token(self, id_token: str, nonce: str) -> Dict[str, Any]:

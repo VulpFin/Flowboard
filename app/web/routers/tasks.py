@@ -10,10 +10,13 @@ from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
 from ...ai import enrich as ai_enrich
+from ...ai import instructions as ai_instructions
 from ...calendars import ics
 from ...calendars import links as cal_links
 from ...db import get_db
 from ...models import Board, User
+from ...services import reflections as reflection_service
+from ...services import schedule as schedule_service
 from ...services import tasks as task_service
 from ...services.planner import plan_schedule
 from .. import deps
@@ -69,7 +72,71 @@ def mark_done(request: Request, task_id: str, board: Board = Depends(deps.curren
         raise HTTPException(404, "Task not found")
     task_service.complete_task(db, board, t, actor_id=user.id)
     _after_change(db, board, t, user)
-    return _board_partial(request, db, board) if deps.is_htmx(request) else deps.redirect(f"/boards/{board.slug}/")
+    if deps.is_htmx(request):
+        return _board_partial(request, db, board, {"reflect_task": t})
+    return deps.redirect(f"/boards/{board.slug}/")
+
+
+@router.post("/tasks/{task_id}/reflect", dependencies=[Depends(deps.csrf_protect)])
+def reflect(request: Request, task_id: str, actual_min: Optional[str] = Form(None), actual_energy: Optional[str] = Form(None), clarity: Optional[str] = Form(None), difficulty: Optional[str] = Form(None), notes: str = Form(""), skip: Optional[str] = Form(None), board: Board = Depends(deps.current_board_editor), user: User = Depends(deps.get_current_user), db: Session = Depends(get_db)):
+    """Completion questions ("how long did it really take?") -> calibration profile."""
+    t = task_service.get_task(db, board, task_id)
+    if t is not None and not skip:
+        def _int(v):
+            try:
+                return int(v) if v not in (None, "") else None
+            except ValueError:
+                return None
+        reflection_service.record(db, user, board, t, actual_min=_int(actual_min), actual_energy=actual_energy or None, clarity=_int(clarity), difficulty=_int(difficulty), notes=notes)
+    return deps.render(request, "boards/_reflect.html", {"reflect_task": None, "thanks": not skip and t is not None})
+
+
+@router.post("/tasks/{task_id}/instructions", dependencies=[Depends(deps.csrf_protect)])
+def task_instructions(request: Request, task_id: str, board: Board = Depends(deps.current_board_editor), user: User = Depends(deps.get_current_user), db: Session = Depends(get_db)):
+    t = task_service.get_task(db, board, task_id)
+    if t is None:
+        raise HTTPException(404, "Task not found")
+    res = ai_instructions.generate(db, user, board, t)
+    return _board_partial(request, db, board, {"ai_error": None if res.get("ok") else res.get("error"), "expand_task": t.id})
+
+
+@router.post("/tasks/{task_id}/instructions/clear", dependencies=[Depends(deps.csrf_protect)])
+def task_instructions_clear(request: Request, task_id: str, board: Board = Depends(deps.current_board_editor), user: User = Depends(deps.get_current_user), db: Session = Depends(get_db)):
+    t = task_service.get_task(db, board, task_id)
+    if t is None:
+        raise HTTPException(404, "Task not found")
+    task_service.update_task(db, board, t, {"instructions": ""}, actor_id=user.id)
+    return _board_partial(request, db, board)
+
+
+# --- scheduling -----------------------------------------------------------
+
+@router.post("/schedule/auto", dependencies=[Depends(deps.csrf_protect)])
+def schedule_auto(request: Request, reschedule_all: Optional[str] = Form(None), board: Board = Depends(deps.current_board_editor), user: User = Depends(deps.get_current_user), db: Session = Depends(get_db)):
+    n = schedule_service.auto_schedule(db, user, board, reschedule_all=bool(reschedule_all))
+    task_service.log_activity(db, board, actor_id=user.id, actor_kind="system", action="scheduled", summary=f"Auto-scheduled {n} task(s) within daily capacity")
+    if deps.is_htmx(request):
+        return _board_partial(request, db, board)
+    return deps.redirect(f"/boards/{board.slug}/schedule?msg=Scheduled+{n}+task(s)")
+
+
+@router.post("/schedule/rollover", dependencies=[Depends(deps.csrf_protect)])
+def schedule_rollover(request: Request, board: Board = Depends(deps.current_board_editor), user: User = Depends(deps.get_current_user), db: Session = Depends(get_db)):
+    n = schedule_service.rollover(db, user, board)
+    if deps.is_htmx(request):
+        return _board_partial(request, db, board)
+    return deps.redirect(f"/boards/{board.slug}/schedule?msg=Rolled+over+{n}+task(s)")
+
+
+@router.post("/tasks/{task_id}/schedule", dependencies=[Depends(deps.csrf_protect)])
+def task_schedule(request: Request, task_id: str, scheduled_date: str = Form(""), board: Board = Depends(deps.current_board_editor), user: User = Depends(deps.get_current_user), db: Session = Depends(get_db)):
+    t = task_service.get_task(db, board, task_id)
+    if t is None:
+        raise HTTPException(404, "Task not found")
+    task_service.update_task(db, board, t, {"scheduled_date": scheduled_date or None}, actor_id=user.id)
+    if deps.is_htmx(request):
+        return _board_partial(request, db, board)
+    return deps.redirect(request.headers.get("referer") or f"/boards/{board.slug}/schedule")
 
 
 @router.delete("/tasks/{task_id}", dependencies=[Depends(deps.csrf_protect)])

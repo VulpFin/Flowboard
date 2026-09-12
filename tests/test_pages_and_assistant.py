@@ -45,7 +45,7 @@ def test_register_login_and_pages(client, db):
     r = client.post("/boards/tg11-work/tasks/reorder", json={"context": "Email", "order": [tid]})
     assert r.status_code == 200
     r = client.post(f"/boards/tg11-work/tasks/{tid}/done", headers={"HX-Request": "true"})
-    assert r.status_code == 200 and "Write docs v2" not in r.text
+    assert r.status_code == 200 and 'class="cardwrap"' not in r.text and "reflectmodal" in r.text  # board empty + completion questions
     r = client.get("/boards/tg11-work/activity")
     assert "Completed" in r.text
     # security page actions

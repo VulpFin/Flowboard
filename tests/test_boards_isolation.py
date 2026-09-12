@@ -10,7 +10,8 @@ from app.models import BoardRole, BoardMembership
 
 def test_default_board_created_on_signup(db, alice):
     boards = board_service.list_boards_for_user(db, alice)
-    assert len(boards) == 1 and boards[0].slug == "personal"
+    slugs = [b.slug for b in boards]
+    assert slugs[0] == "personal" and "getting-started" in slugs  # default board + tutorial board
     assert alice.profile.default_board_id == boards[0].id
 
 

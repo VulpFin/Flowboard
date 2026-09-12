@@ -23,7 +23,10 @@ from ..services.boards import BoardAccessDenied, BoardNotFound, get_board_for_us
 
 TEMPLATES_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "templates")
 templates = Jinja2Templates(directory=TEMPLATES_DIR)
-templates.env.globals.update(site_name=settings.FLOWBOARD_SITE_NAME, site_url=settings.FLOWBOARD_SITE_URL, app_version=__version__, oidc_enabled=settings.oidc_configured, oidc_label=settings.TG11_OIDC_LOGIN_LABEL, local_login_enabled=settings.TG11_LOCAL_LOGIN_ENABLED, registration_enabled=settings.FLOWBOARD_ALLOW_REGISTRATION)
+from .mdlite import md_lite  # noqa: E402
+
+templates.env.filters["md"] = md_lite
+templates.env.globals.update(site_name=settings.FLOWBOARD_SITE_NAME, site_url=settings.FLOWBOARD_SITE_URL, app_version=__version__, oidc_enabled=settings.oidc_configured, tg11_issuer=settings.TG11_OIDC_ISSUER.rstrip('/'), oidc_label=settings.TG11_OIDC_LOGIN_LABEL, local_login_enabled=settings.TG11_LOCAL_LOGIN_ENABLED, registration_enabled=settings.FLOWBOARD_ALLOW_REGISTRATION)
 
 _signer = URLSafeTimedSerializer(settings.FLOWBOARD_SECRET_KEY, salt="fb-session")
 CSRF_COOKIE = "fb_csrf"
@@ -165,7 +168,9 @@ def is_htmx(request: Request) -> bool:
 
 def render(request: Request, template: str, ctx: Optional[dict] = None, status_code: int = 200, db: Optional[Session] = None):
     """Template rendering with the common context (user, boards, csrf)."""
-    context = {"request": request, "csrf_token": csrf_token_for(request)}
+    from datetime import date as _date
+
+    context = {"request": request, "csrf_token": csrf_token_for(request), "today": _date.today()}
     user = getattr(request.state, "user", None)
     context["user"] = user
     if user is not None and db is not None:

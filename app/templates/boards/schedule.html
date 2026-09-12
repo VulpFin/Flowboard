@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Schedule · {{ board.name }} · {{ site_name }}{% endblock %}
+{% block topbar %}
+<a class="linkbtn" href="/boards/{{ board.slug }}/">← Board</a>
+<a class="linkbtn" href="/settings/schedule" title="Daily limits, start/end times, days off">Work schedule</a>
+{% endblock %}
+{% block content %}
+<div class="boardhead">
+  <h2>{{ board.icon }} {{ board.name }} — schedule</h2>
+  <p class="muted small">Tasks from <b>all</b> your boards count against each day's capacity; only this board's tasks can be moved here.</p>
+  <div class="row">
+    <a class="linkbtn" href="?start={{ prev }}&days={{ days }}">‹ earlier</a>
+    <a class="linkbtn" href="?start={{ today.isoformat() }}&days={{ days }}">today</a>
+    <a class="linkbtn" href="?start={{ next }}&days={{ days }}">later ›</a>
+    <a class="linkbtn" href="?start={{ start.isoformat() }}&days={{ 14 if days == 7 else 7 }}">{{ '2 weeks' if days == 7 else '1 week' }}</a>
+    {% if can_edit %}
+    <form method="post" action="/boards/{{ board.slug }}/schedule/auto" style="display:inline"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="btn primary" title="Place every unscheduled task on the first day with room">Auto-schedule unscheduled</button></form>
+    <form method="post" action="/boards/{{ board.slug }}/schedule/auto" style="display:inline" onsubmit="return confirm('Re-place every open task on this board?')"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="reschedule_all" value="1"><button class="btn" title="Discard current days and re-plan the whole board">Re-plan all</button></form>
+    <form method="post" action="/boards/{{ board.slug }}/schedule/rollover" style="display:inline"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="btn" title="Move anything unfinished from past days forward">Roll over now</button></form>
+    {% endif %}
+  </div>
+</div>
+<div class="weekgrid">
+  {% for cap, tasks in plan %}
+  <div class="daycol {% if not cap.enabled %}off{% endif %} {% if cap.day == today %}istoday{% endif %} {% if cap.used_min > cap.max_min and cap.enabled %}over{% endif %}">
+    <h3>{{ weekdays[cap.day.weekday()][:3] }} <span class="muted small">{{ cap.day.strftime('%b %d') }}</span></h3>
+    {% if cap.enabled %}
+    <div class="capbar" title="{{ cap.used_min }} of {{ cap.max_min }} min planned"><span style="width:{{ [100, (cap.used_min * 100 / cap.max_min) if cap.max_min else 100]|min }}%"></span></div>
+    <div class="muted small">{{ cap.start }}–{{ cap.end }} · {{ cap.used_min }}/{{ cap.max_min }} min{% if cap.used_high_min %} · {{ cap.used_high_min }}/{{ cap.max_high_min }} high{% endif %}</div>
+    {% else %}<div class="muted small">day off</div>{% endif %}
+    <ul class="plain">
+    {% for t in tasks %}
+      <li class="schedtask {% if t.board_id != board.id %}other{% endif %} {% if t.energy == 'high' %}high{% endif %}">
+        <div><b>{{ t.title }}</b> <span class="muted small">{{ t.estimate_min }}m · {{ t.energy }}{% if t.due %} · due {{ t.due }}{% endif %}{% if t.rollover_count %} · ↻{{ t.rollover_count }}{% endif %}</span></div>
+        {% if t.board_id != board.id %}<div class="muted small">{{ board_names[t.board_id].icon }} {{ board_names[t.board_id].name }}</div>
+        {% elif can_edit %}
+        <form method="post" action="/boards/{{ board.slug }}/tasks/{{ t.id }}/schedule" class="row">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <input type="date" name="scheduled_date" value="{{ t.scheduled_date.isoformat() }}" class="mini"><button class="mini">Move</button>
+        </form>
+        {% endif %}
+      </li>
+    {% endfor %}
+    </ul>
+  </div>
+  {% endfor %}
+</div>
+{% if unscheduled %}
+<section class="panel">
+  <h3>Unscheduled on this board <span class="muted small">{{ unscheduled|length }}</span></h3>
+  <ul class="plain">
+  {% for t in unscheduled %}
+    <li class="schedtask"><b>{{ t.title }}</b> <span class="muted small">{{ t.estimate_min }}m · {{ t.energy }}{% if t.due %} · due {{ t.due }}{% endif %}</span>
+      {% if can_edit %}<form method="post" action="/boards/{{ board.slug }}/tasks/{{ t.id }}/schedule" style="display:inline"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="date" name="scheduled_date" class="mini"><button class="mini">Set day</button></form>{% endif %}
+    </li>
+  {% endfor %}
+  </ul>
+</section>
+{% endif %}
+{% endblock %}

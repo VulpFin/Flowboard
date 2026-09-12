@@ -57,13 +57,17 @@ def enrich(db: Session, user: User, board: Board, title: str, description: str, 
     client = AIClient(db, user, board)
     if client.resolved is None:
         return {"ok": False, "error": "no AI provider configured"}
+    from ..services import reflections
+
     neighbors = _neighbors(all_tasks, title)
+    calibration = reflections.prompt_summary(user)
     prompt = (
         f"Enrich this task for a planner.\nTitle: {title}\nDetails: {description}\n\n"
         f"Nearby & past tasks: {json.dumps(neighbors, ensure_ascii=False)}\n\n"
         f"Infer 1-3 short contexts (prefer: {CONTEXT_HINT}). "
         + ("Also infer estimate_min (1-1440), importance (1-5) and energy (low/medium/high). "
            "If similar tasks were completed faster than estimated, bias estimates downward." if fields else "Return only contexts.")
+        + (f"\n\n{calibration}" if calibration and fields else "")
     )
     try:
         data = client.structured(

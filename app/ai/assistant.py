@@ -39,6 +39,7 @@ TASK_FIELDS_SCHEMA = {
         "depends_on": {"type": "array", "items": {"type": "string"}, "description": "task ids or temp ids of tasks created earlier in this proposal"},
         "status": {"type": "string", "enum": ["open", "blocked"]},
         "tags": {"type": "array", "items": {"type": "string"}},
+        "scheduled_date": {"type": ["string", "null"], "description": "YYYY-MM-DD day the task should be worked on (respect the user's daily capacity), null to unschedule"},
     },
 }
 
@@ -73,6 +74,8 @@ Rules:
 - Due dates: today is {today} ({weekday}). Use YYYY-MM-DD (add HH:MM only when a time is meaningful). "Next week" means the following Monday-Friday.
 - Contexts are short setup labels (Excel, Email, Coding, Docs, Slides, Calls, Errand, Design, Meetings, Lab, Office, General...). Keep existing contexts unless asked.
 - Estimates are minutes (5-1440). Importance 1-5 (5 critical). Energy low/medium/high.
+- `scheduled_date` is the day the user plans to *work on* a task (distinct from `due`). When scheduling, never exceed the daily capacity given in the work-schedule block; spill extra work to the next free day.
+- If a calibration block is present, apply it: scale estimates by the user's real time ratio, and be more concrete when their clarity ratings are low.
 - If the request is ambiguous, ask a clarifying question in `message` and return no operations.
 - `message` should be concise Markdown. When you return operations, summarise them in `message` too.
 """
@@ -101,6 +104,10 @@ def serialise_board(tasks: List[Task], include_done: bool = False, limit: int = 
             row["deps"] = t.depends_on
         if t.done:
             row["done"] = True
+        if t.scheduled_date:
+            row["scheduled"] = t.scheduled_date.isoformat()
+        if t.instructions:
+            row["has_instructions"] = True
         if t.is_overdue:
             row["overdue"] = True
         rows.append(row)
@@ -109,11 +116,31 @@ def serialise_board(tasks: List[Task], include_done: bool = False, limit: int = 
     return json.dumps(rows, ensure_ascii=False)
 
 
-def build_messages(board: Board, tasks: List[Task], request_text: str, history: Optional[List[Dict[str, str]]] = None, include_done: bool = False) -> List[ChatMessage]:
+def user_context_block(user: Optional[User], tasks: List[Task]) -> str:
+    """Calibration profile + work schedule for this user (empty if unknown)."""
+    if user is None:
+        return ""
+    from ..services import reflections, schedule
+
+    parts = []
+    cal = reflections.prompt_summary(user)
+    if cal:
+        parts.append(cal)
+    try:
+        parts.append(schedule.schedule_summary_for_ai(user, tasks))
+    except Exception:
+        pass
+    return "\n\n".join(parts)
+
+
+def build_messages(board: Board, tasks: List[Task], request_text: str, history: Optional[List[Dict[str, str]]] = None, include_done: bool = False, user: Optional[User] = None) -> List[ChatMessage]:
     now = datetime.now()
     msgs = [ChatMessage(role="system", content=SYSTEM_PROMPT.format(today=now.strftime("%Y-%m-%d"), weekday=now.strftime("%A")))]
     stats = task_service.board_stats(tasks)
     msgs.append(ChatMessage(role="system", content=f"Board: {board.name}. {board.description or ''}\nStats: {json.dumps(stats)}\nTasks (JSON): {serialise_board(tasks, include_done)}"))
+    ctx = user_context_block(user, tasks)
+    if ctx:
+        msgs.append(ChatMessage(role="system", content=ctx))
     for h in history or []:
         if h.get("role") in ("user", "assistant") and h.get("content"):
             msgs.append(ChatMessage(role=h["role"], content=h["content"][:4000]))
@@ -170,7 +197,7 @@ def propose(db: Session, user: User, board: Board, request_text: str, *, model_r
     known = {t.id: t for t in tasks}
     client = AIClient(db, user, board, model_ref)
     data = client.structured(
-        build_messages(board, tasks, request_text, history),
+        build_messages(board, tasks, request_text, history, user=user),
         schema=PROPOSAL_SCHEMA,
         name="propose_changes",
         description="Answer the user and propose zero or more board operations for review.",
@@ -252,5 +279,8 @@ QUICK_PROMPTS = [
     ("Prioritise", "Look at the open tasks and propose importance/due-date adjustments so the most valuable and urgent work is clearly first. Explain briefly."),
     ("Overdue & blocked", "List overdue and blocked tasks and suggest what to do about each."),
     ("Plan this week", "Build a realistic schedule for the rest of this week from the open tasks, assigning due dates (propose updates)."),
-    ("Estimate effort", "Review the open tasks' estimates and propose corrections where they look unrealistic."),
+    ("Estimate effort", "Review the open tasks' estimates and propose corrections where they look unrealistic (use my calibration data if present)."),
+    ("Daily briefing", "Give me a short briefing for today: what is scheduled or due today, what is overdue, how much capacity I have left according to my work schedule, and the single best task to start with."),
+    ("Notes → tasks", "Here are my raw notes. Turn them into well-formed tasks (title, estimate, importance, energy, context, due date if mentioned) and propose creating them:\n\n"),
+    ("Fit my schedule", "Assign scheduled_date to every open task over the coming days without exceeding my daily capacity, respecting dependencies and due dates (propose updates)."),
 ]

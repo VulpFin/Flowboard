@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 
 from ...config import settings
 from ...db import get_db
+from ...identity import tg11_api
 from ...identity.oidc import PROVIDER_ID, OIDCClient, OIDCError
 from ...models import User
 from ...services import auth as auth_service
@@ -126,7 +127,7 @@ def reset_submit(request: Request, token: str, password: str = Form(...), passwo
 # --- TG11 OIDC -----------------------------------------------------------
 
 @router.get("/auth/tg11/login")
-def tg11_login(request: Request, next: str = "/", link: int = 0):
+def tg11_login(request: Request, next: str = "/", link: int = 0, sync: int = 0):
     if not settings.oidc_configured:
         return deps.redirect("/login?err=TG11+sign-in+is+not+configured")
     try:
@@ -134,6 +135,7 @@ def tg11_login(request: Request, next: str = "/", link: int = 0):
         flow = client.new_flow_state()
         flow["next"] = _safe_next(next)
         flow["link"] = "1" if link else "0"
+        flow["sync"] = "1" if sync else "0"
         url = client.authorization_url(flow)
     except OIDCError as exc:
         return deps.redirect(f"/login?err=TG11+sign-in+unavailable:+{exc}")
@@ -157,7 +159,23 @@ def tg11_callback(request: Request, code: Optional[str] = None, state: Optional[
         claims = OIDCClient.from_settings().exchange(code, flow)
     except OIDCError as exc:
         return deps.redirect(f"/login?err=TG11+sign-in+failed:+{exc}")
+    def _import_keys(u: User) -> str:
+        if "tg11.ai" not in (claims.scope or "").split() or not claims.access_token:
+            return ""
+        try:
+            res = tg11_api.import_vault(db, u, tg11_api.fetch_vault(claims.access_token))
+        except Exception:
+            return ""
+        return f"+({len(res['imported'])}+AI+key(s)+synced+from+TG11)" if res["imported"] else ""
+
     try:
+        if flow.get("sync") == "1" and current is not None:
+            if current.tg11_user_id and current.tg11_user_id != claims.subject:
+                return deps.redirect("/settings/ai-providers?err=Signed+in+to+a+different+TG11+account+than+the+one+linked+here")
+            note = _import_keys(current)
+            resp = deps.redirect("/settings/ai-providers?msg=Synced+from+TG11" + note if note else "/settings/ai-providers?msg=Nothing+to+sync:+your+TG11+vault+has+no+keys+Flowboard+can+use+(or+the+tg11.ai+scope+is+not+granted)")
+            resp.delete_cookie(FLOW_COOKIE, path="/auth/tg11")
+            return resp
         if flow.get("link") == "1" and current is not None:
             # explicit account linking from Settings -> Security
             from ...models import IdentityLink, utcnow
@@ -169,10 +187,15 @@ def tg11_callback(request: Request, code: Optional[str] = None, state: Optional[
             if existing is None:
                 db.add(IdentityLink(user_id=current.id, provider=PROVIDER_ID, issuer=settings.TG11_OIDC_ISSUER, subject=claims.subject, email_at_link=claims.email, username_at_link=claims.preferred_username, migration_source="account_link", migration_status="linked", last_login_at=utcnow()))
                 current.tg11_user_id = claims.subject
-            resp = deps.redirect("/settings/security?msg=TG11+account+linked")
+                tg11_api.register_link(claims.subject, current.id, source="account_link")
+            note = _import_keys(current)
+            resp = deps.redirect("/settings/security?msg=TG11+account+linked" + note)
             resp.delete_cookie(FLOW_COOKIE, path="/auth/tg11")
             return resp
         user, _created = auth_service.get_or_create_user_for_identity(db, provider=PROVIDER_ID, issuer=settings.TG11_OIDC_ISSUER, subject=claims.subject, email=claims.email, email_verified=claims.email_verified, preferred_username=claims.preferred_username, display_name=claims.name)
+        if _created:
+            tg11_api.register_link(claims.subject, user.id)
+        _import_keys(user)
     except auth_service.AuthError as exc:
         return deps.redirect(f"/login?err={str(exc)}")
     from ...models import utcnow as _now

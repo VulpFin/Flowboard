@@ -16,6 +16,8 @@ from ...db import get_db
 from ...models import IdentityLink, User, UserSession
 from ...services import auth as auth_service
 from ...services import boards as board_service
+from ...services import reflections as reflection_service
+from ...services import schedule as schedule_service
 from .. import deps
 
 router = APIRouter(prefix="/settings", tags=["settings"])
@@ -58,6 +60,28 @@ def account_save(request: Request, display_name: str = Form(""), email: str = Fo
         except Exception:
             pass
     return deps.redirect("/settings/account?msg=Saved")
+
+
+@router.get("/schedule")
+def schedule_page(request: Request, user: User = Depends(deps.get_current_user), db: Session = Depends(get_db)):
+    return deps.render(request, "settings/schedule.html", {"section": "schedule", "sched": schedule_service.load_schedule(user), "weekdays": schedule_service.WEEKDAYS, "calibration": reflection_service.get_profile(user), "calibration_text": reflection_service.prompt_summary(user)}, db=db)
+
+
+@router.post("/schedule", dependencies=[Depends(deps.csrf_protect)])
+async def schedule_save(request: Request, user: User = Depends(deps.get_current_user), db: Session = Depends(get_db)):
+    form = await request.form()
+    schedule_service.save_schedule(db, user, {k: str(v) for k, v in form.items()})
+    return deps.redirect("/settings/schedule?msg=Schedule+saved")
+
+
+@router.post("/schedule/reset-calibration", dependencies=[Depends(deps.csrf_protect)])
+def calibration_reset(user: User = Depends(deps.get_current_user), db: Session = Depends(get_db)):
+    from sqlalchemy import delete
+    from ...models import TaskReflection
+
+    db.execute(delete(TaskReflection).where(TaskReflection.user_id == user.id))
+    user.profile.calibration_json = "{}"
+    return deps.redirect("/settings/schedule?msg=Calibration+data+cleared")
 
 
 @router.get("/ai-defaults")

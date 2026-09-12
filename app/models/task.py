@@ -6,10 +6,10 @@ legacy import is lossless (`contexts`, `estimate_min`, `importance`, `energy`,
 from __future__ import annotations
 
 import json
-from datetime import datetime
+from datetime import date, datetime
 from typing import List, Optional
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, Text
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from ..db import Base
@@ -45,6 +45,9 @@ class Task(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     completions: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     parent_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True, index=True)  # subtasks
     ai_generated: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    scheduled_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True, index=True)  # day the planner placed it on
+    rollover_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    instructions: Mapped[str] = mapped_column(Text, default="", nullable=False)  # AI "how to do this" (markdown)
 
     # ---- convenience accessors (keep templates/planner unchanged) -------
     @property
@@ -111,6 +114,7 @@ class Task(UUIDPrimaryKeyMixin, TimestampMixin, Base):
             "last_actual_min": self.last_actual_min,
             "completions": self.completions,
             "parent_id": self.parent_id,
+            "scheduled_date": self.scheduled_date.isoformat() if self.scheduled_date else None,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
 
@@ -128,4 +132,27 @@ class TaskActivity(UUIDPrimaryKeyMixin, Base):
     action: Mapped[str] = mapped_column(String(32), nullable=False)
     summary: Mapped[str] = mapped_column(String(500), default="", nullable=False)
     data_json: Mapped[str] = mapped_column(Text, default="{}", nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
+
+
+class TaskReflection(UUIDPrimaryKeyMixin, Base):
+    """What the user tells us after finishing a task - the raw material for the
+    per-user calibration profile (see services/reflections.py)."""
+
+    __tablename__ = "task_reflections"
+    __table_args__ = (Index("ix_reflection_user_time", "user_id", "created_at"),)
+
+    task_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    board_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    title: Mapped[str] = mapped_column(String(300), default="", nullable=False)
+    context: Mapped[str] = mapped_column(String(32), default="General", nullable=False)
+    estimate_min: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    actual_min: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    planned_energy: Mapped[str] = mapped_column(String(8), default="medium", nullable=False)
+    actual_energy: Mapped[Optional[str]] = mapped_column(String(8), nullable=True)
+    clarity: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)  # 1-5 were the instructions/description clear
+    difficulty: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)  # 1-5
+    had_instructions: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    notes: Mapped[str] = mapped_column(Text, default="", nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)

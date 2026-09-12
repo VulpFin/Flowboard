@@ -72,7 +72,11 @@ how providers with weak tool calling still drive the assistant.
 | Stability AI | stability | image generation only; validation via balance endpoint |
 | Replicate | replicate | predictions API; curated + user-pinned models; chat via `prompt` input |
 | OctoAI | openai_compat (legacy) | public service discontinued in 2024; kept for private endpoints |
-| Custom OpenAI-compatible | openai_compat | Ollama / LM Studio / vLLM / proxies |
+| Azure OpenAI (2.1) | azure_openai | `/openai/v1` compatibility surface, `api-key` header; models = deployment names listed in config |
+| Hugging Face Inference Providers, Fireworks AI, DeepInfra (2.1) | openai_compat | shared adapter |
+| Ollama, LM Studio, vLLM / self-hosted (2.1) | openai_compat | presets of the custom endpoint with the right default URL; key optional |
+| Custom OpenAI-compatible | openai_compat | any other proxy / server |
+| TG11 key vault (2.1) | – | not a provider: *Sync from TG11* copies keys stored at accounts.tg11.org into the providers above (needs the `tg11.ai` scope and a trusted client) |
 | GitHub Copilot | – | Copilot subscriptions expose no API key; GitHub Models (PAT with `models:read`) is the supported route |
 
 ## Adding a provider
@@ -119,3 +123,10 @@ how providers with weak tool calling still drive the assistant.
 Lookup is exact id, then longest prefix (dated snapshots inherit). Missing
 entries produce no estimate rather than a wrong one. Update the file when
 vendors change prices — no code change required.
+
+## AI features added in 2.1
+
+* **Calibration context** — every assistant / enrichment / instructions prompt gets a short block built from the user's completion reflections (`services/reflections.prompt_summary`): actual÷estimated time ratio (overall and per context), energy delta, clarity and difficulty ratings, recent notes. Nothing is trained; it lives in the context window per request.
+* **Schedule context** — the user's per-day capacity and what is already scheduled for the next 7 days (`services/schedule.schedule_summary_for_ai`) so "plan my week" proposals respect real limits. Proposals can set `scheduled_date` on tasks.
+* **How do I do this?** — `ai/instructions.py` writes step-by-step instructions for one task and stores them in `Task.instructions` (shown inside the expanded card, rendered with the safe `md` filter).
+* **Quick prompts** — Daily briefing, Notes → tasks, Fit my schedule.

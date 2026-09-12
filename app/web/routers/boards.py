@@ -13,7 +13,9 @@ from ...db import get_db
 from ...models import Board, User
 from ...services import auth as auth_service
 from ...services import boards as board_service
+from ...services import schedule as schedule_service
 from ...services import tasks as task_service
+from ...services import tutorial as tutorial_service
 from ...ai.assistant import QUICK_PROMPTS
 from ...ai.client import resolve_model
 from ...calendars import links as cal_links
@@ -48,11 +50,16 @@ def board_create(request: Request, name: str = Form(...), description: str = For
 
 @router.get("/boards/{slug}/")
 def board_view(request: Request, board: Board = Depends(deps.current_board), user: User = Depends(deps.get_current_user), db: Session = Depends(get_db)):
+    membership = board_service.membership_for(db, board, user)
+    if membership and membership.role_enum.can_edit:
+        try:
+            schedule_service.rollover(db, user, board)  # lazy: unfinished work from past days moves forward
+        except Exception:
+            pass
     tasks = task_service.list_tasks(db, board, include_done=False)
     columns = task_service.as_columns(tasks)
     all_tasks = task_service.list_tasks(db, board, include_done=True)
     model = resolve_model(db, user, board)
-    membership = board_service.membership_for(db, board, user)
     return deps.render(request, "boards/view.html", {
         "columns": columns, "stats": task_service.board_stats(all_tasks), "ai_model": model.ref if model else None,
         "quick_prompts": QUICK_PROMPTS, "can_edit": membership.role_enum.can_edit if membership else False,
@@ -105,6 +112,39 @@ def board_delete(confirm: str = Form(""), board: Board = Depends(deps.current_bo
 def board_make_default(board: Board = Depends(deps.current_board), user: User = Depends(deps.get_current_user), db: Session = Depends(get_db)):
     user.profile.default_board_id = board.id
     return deps.redirect(f"/boards?msg={board.name}+is+now+your+default+board")
+
+
+@router.get("/boards/{slug}/schedule")
+def board_schedule(request: Request, start: Optional[str] = None, days: int = 7, board: Board = Depends(deps.current_board), user: User = Depends(deps.get_current_user), db: Session = Depends(get_db)):
+    from datetime import date, timedelta
+
+    try:
+        start_d = date.fromisoformat(start) if start else date.today()
+    except ValueError:
+        start_d = date.today()
+    days = max(1, min(days, 28))
+    membership = board_service.membership_for(db, board, user)
+    can_edit = membership.role_enum.can_edit if membership else False
+    if can_edit:
+        try:
+            schedule_service.rollover(db, user, board)
+        except Exception:
+            pass
+    all_boards = board_service.list_boards_for_user(db, user)
+    plan = schedule_service.day_plan(db, user, all_boards, start_d, days)
+    unscheduled = [t for t in task_service.list_tasks(db, board, include_done=False) if not t.scheduled_date]
+    board_names = {b.id: b for b in all_boards}
+    return deps.render(request, "boards/schedule.html", {
+        "plan": plan, "unscheduled": unscheduled, "start": start_d, "days": days, "can_edit": can_edit, "board_names": board_names,
+        "prev": (start_d - timedelta(days=days)).isoformat(), "next": (start_d + timedelta(days=days)).isoformat(), "today": date.today(),
+        "sched": schedule_service.load_schedule(user), "weekdays": schedule_service.WEEKDAYS,
+    }, db=db)
+
+
+@router.post("/tutorial/recreate", dependencies=[Depends(deps.csrf_protect)])
+def tutorial_recreate(user: User = Depends(deps.get_current_user), db: Session = Depends(get_db)):
+    board = tutorial_service.seed_tutorial(db, user, force=True)
+    return deps.redirect(f"/boards/{board.slug}/?msg=Tutorial+board+created")
 
 
 @router.get("/boards/{slug}/activity")

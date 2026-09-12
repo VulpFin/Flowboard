@@ -1,0 +1,48 @@
+{% extends "settings/_layout.html" %}
+{% block settings %}
+<h2>Work schedule</h2>
+<p class="muted">How much you're willing to work each day. The planner and the assistant never schedule more than this; unfinished work rolls over to the next day with room.</p>
+<section class="panel">
+<form method="post" action="/settings/schedule" class="stack">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <table class="table schedtable">
+    <tr><th>Day</th><th>Work?</th><th>Start</th><th>End</th><th>Max minutes</th><th>Max high-energy min</th></tr>
+    {% for i in range(7) %}{% set d = sched.days[i|string] %}
+    <tr>
+      <td><b>{{ weekdays[i] }}</b></td>
+      <td><input type="checkbox" name="enabled_{{ i }}" {% if d.enabled %}checked{% endif %}></td>
+      <td><input type="time" name="start_{{ i }}" value="{{ d.start }}"></td>
+      <td><input type="time" name="end_{{ i }}" value="{{ d.end }}"></td>
+      <td><input type="number" name="max_min_{{ i }}" min="0" max="1440" step="15" value="{{ d.max_min }}" title="Total minutes of tasks placed on this day"></td>
+      <td><input type="number" name="max_high_min_{{ i }}" min="0" max="1440" step="15" value="{{ d.max_high_min }}" title="Of which high-energy tasks"></td>
+    </tr>
+    {% endfor %}
+  </table>
+  <label>Days off (one date per line or comma separated, YYYY-MM-DD)<textarea name="days_off" rows="2" placeholder="2026-12-25">{{ sched.days_off|join('\n') }}</textarea></label>
+  <div class="row">
+    <label class="check"><input type="checkbox" name="auto_rollover" {% if sched.auto_rollover %}checked{% endif %}> Automatically move unfinished tasks to the next free day</label>
+    <label>Scheduling horizon (days) <input type="number" name="horizon_days" min="7" max="90" value="{{ sched.horizon_days }}"></label>
+  </div>
+  <button type="submit" class="btn primary">Save schedule</button>
+</form>
+</section>
+
+<h2>Calibration</h2>
+<p class="muted">Built from the questions you answer when you mark tasks done. It is sent to the assistant with every request (in the prompt, never used to train a model) and scales new estimates.</p>
+<section class="panel">
+{% if calibration and calibration.samples %}
+  <table class="table">
+    <tr><td>Reflections recorded</td><td>{{ calibration.samples }}</td></tr>
+    <tr><td>Actual ÷ estimated time</td><td>{% if calibration.time_ratio %}{{ '%.2f'|format(calibration.time_ratio) }}× ({{ calibration.time_ratio_samples }} samples){% else %}—{% endif %}</td></tr>
+    {% for ctx, v in calibration.time_ratio_by_context.items() %}<tr><td class="muted small">&nbsp;&nbsp;{{ ctx }}</td><td class="small">{{ '%.2f'|format(v.ratio) }}× (n={{ v.n }})</td></tr>{% endfor %}
+    <tr><td>Energy vs planned</td><td>{% if calibration.energy_delta is not none %}{{ '%+.2f'|format(calibration.energy_delta) }} (positive = harder than planned){% else %}—{% endif %}</td></tr>
+    <tr><td>Clarity (1–5)</td><td>{{ calibration.clarity_avg or '—' }}{% if calibration.clarity_with_instructions_avg %} · with AI instructions {{ calibration.clarity_with_instructions_avg }}{% endif %}</td></tr>
+    <tr><td>Difficulty (1–5)</td><td>{{ calibration.difficulty_avg or '—' }}</td></tr>
+  </table>
+  <details><summary class="muted small">What the assistant is told</summary><pre class="small">{{ calibration_text }}</pre></details>
+  <form method="post" action="/settings/schedule/reset-calibration" onsubmit="return confirm('Delete all reflection answers and reset calibration?')"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="danger">Clear calibration data</button></form>
+{% else %}
+  <p class="muted">No reflections yet. Complete a task and answer the questions to start calibrating.</p>
+{% endif %}
+</section>
+{% endblock %}

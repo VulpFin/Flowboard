@@ -1,0 +1,28 @@
+<div id="reflect-slot" hx-swap-oob="outerHTML">
+{% if reflect_task %}
+<div class="focusmodal reflectmodal" style="display:flex">
+  <form class="focuscard reflectcard stack" hx-post="/boards/{{ board.slug }}/tasks/{{ reflect_task.id }}/reflect" hx-target="#reflect-slot" hx-swap="outerHTML">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <h3>Nice — “{{ reflect_task.title }}” is done ✔</h3>
+    <p class="muted small">Four quick questions so the assistant learns how <i>you</i> work. Estimated {{ reflect_task.estimate_min }} min · planned energy {{ reflect_task.energy }}.</p>
+    <label>How long did it actually take? <span class="row"><input type="number" name="actual_min" min="1" max="1440" placeholder="minutes" value="{{ reflect_task.last_actual_min or '' }}" autofocus> <span class="muted small">min</span></span></label>
+    <label>How much energy did it really take?
+      <span class="row seg">{% for e in ['low','medium','high'] %}<label class="segopt"><input type="radio" name="actual_energy" value="{{ e }}" {% if e == reflect_task.energy %}checked{% endif %}> {{ e }}</label>{% endfor %}</span>
+    </label>
+    <label>Were the description{% if reflect_task.instructions %} / generated instructions{% endif %} clear enough?
+      <span class="row seg">{% for i in [1,2,3,4,5] %}<label class="segopt"><input type="radio" name="clarity" value="{{ i }}"> {{ i }}</label>{% endfor %} <span class="muted small">1 = confusing · 5 = crystal clear</span></span>
+    </label>
+    <label>How hard was it?
+      <span class="row seg">{% for i in [1,2,3,4,5] %}<label class="segopt"><input type="radio" name="difficulty" value="{{ i }}"> {{ i }}</label>{% endfor %} <span class="muted small">1 = trivial · 5 = brutal</span></span>
+    </label>
+    <label>Anything the assistant should know next time? <input name="notes" maxlength="2000" placeholder="e.g. needed VPN first, took two tries, easier after lunch…"></label>
+    <div class="row">
+      <button type="submit" class="btn primary">Save answers</button>
+      <button type="submit" name="skip" value="1" class="btn">Skip</button>
+    </div>
+  </form>
+</div>
+{% elif thanks %}
+<div class="flash ok autohide">Thanks — your calibration profile was updated. <a href="/settings/schedule">See it</a></div>
+{% endif %}
+</div>

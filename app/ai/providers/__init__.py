@@ -8,6 +8,7 @@ from .gemini import GeminiAdapter
 from .cohere import CohereAdapter
 from .stability import StabilityAdapter
 from .replicate import ReplicateAdapter
+from .azure_openai import AzureOpenAIAdapter
 
 ADAPTERS = {
     "openai_compat": OpenAICompatAdapter,
@@ -16,4 +17,5 @@ ADAPTERS = {
     "cohere": CohereAdapter,
     "stability": StabilityAdapter,
     "replicate": ReplicateAdapter,
+    "azure_openai": AzureOpenAIAdapter,
 }

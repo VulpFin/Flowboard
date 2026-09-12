@@ -18,6 +18,11 @@
 </form>
 </section>
 <section class="panel">
+  <h3>Tutorial board</h3>
+  <p class="muted small">The “Getting started” board walks through every feature by doing. Deleted it, or want a fresh copy?</p>
+  <form method="post" action="/tutorial/recreate"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="btn">Recreate tutorial board</button></form>
+</section>
+<section class="panel">
   <h3>Identity</h3>
   <p class="muted small">Flowboard user id: <code>{{ user.id }}</code>{% if user.tg11_user_id %} · TG11 identity: <code>{{ user.tg11_user_id }}</code>{% else %} · not linked to a TG11 identity yet{% endif %}. Sign-in method and linking live under <a href="/settings/security">Security</a>.</p>
 </section>

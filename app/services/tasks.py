@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from typing import Any, Dict, Iterable, List, Optional
 
 from sqlalchemy import select
@@ -124,7 +124,7 @@ def create_task(db: Session, board: Board, data: Dict[str, Any], *, actor_id: Op
     return task
 
 
-UPDATABLE = {"title", "description", "estimate_min", "importance", "energy", "due", "contexts", "depends_on", "tags", "manual_order", "status", "parent_id", "last_actual_min"}
+UPDATABLE = {"title", "description", "estimate_min", "importance", "energy", "due", "contexts", "depends_on", "tags", "manual_order", "status", "parent_id", "last_actual_min", "scheduled_date", "instructions"}
 
 
 def update_task(db: Session, board: Board, task: Task, patch: Dict[str, Any], *, actor_id: Optional[str] = None, actor_kind: str = "user") -> Task:
@@ -161,6 +161,16 @@ def update_task(db: Session, board: Board, task: Task, patch: Dict[str, Any], *,
                 continue
         elif key == "description":
             value = (value or "").strip()
+        elif key == "instructions":
+            value = (value or "").strip()[:20000]
+        elif key == "scheduled_date":
+            if isinstance(value, str):
+                try:
+                    value = date.fromisoformat(value.strip()[:10]) if value.strip() else None
+                except ValueError:
+                    continue
+            elif value is not None and not isinstance(value, date):
+                continue
         old = getattr(task, key)
         if old != value:
             changes[key] = {"from": old, "to": value}

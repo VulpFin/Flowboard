@@ -191,6 +191,61 @@ register(ProviderSpec(
     notes="OctoAI's public inference service shut down in late 2024 after the NVIDIA acquisition. Kept for users with a private/enterprise endpoint (set Base URL).", status="legacy",
 ))
 register(ProviderSpec(
+    id="azure_openai", name="Azure OpenAI", docs_url="https://learn.microsoft.com/azure/ai-services/openai/", console_url="https://portal.azure.com",
+    credential_fields=[CredentialField("api_key", "Azure OpenAI key", secret=True, required=True, placeholder="from the resource's Keys and Endpoint page")],
+    config_fields=[CredentialField("base_url", "Resource endpoint", secret=False, required=True, placeholder="https://my-resource.openai.azure.com"), CredentialField("deployments", "Deployment names (comma separated)", secret=False, required=True, placeholder="gpt-4o, gpt-4o-mini")],
+    default_base_url="", adapter="azure_openai",
+    capabilities=caps(tools=True, json_mode=True, vision=True, reasoning=True, embeddings=True),
+    family_rules=[(r"o[1-9]", "o-series (reasoning)"), (r"gpt-5", "GPT-5"), (r"gpt-4", "GPT-4"), (r"embedding", "Embeddings")],
+    notes="Models are your deployment names. Uses the /openai/v1 compatibility endpoint.",
+))
+register(ProviderSpec(
+    id="huggingface", name="Hugging Face Inference", docs_url="https://huggingface.co/docs/inference-providers", console_url="https://huggingface.co/settings/tokens",
+    credential_fields=[CredentialField("api_key", "Access token", secret=True, required=True, placeholder="hf_…")],
+    config_fields=[BASE_URL, CredentialField("models", "Models to pin (comma separated)", secret=False, required=False, placeholder="meta-llama/Llama-3.3-70B-Instruct, Qwen/Qwen2.5-72B-Instruct")],
+    default_base_url="https://router.huggingface.co/v1",
+    capabilities=caps(tools=True, json_mode=True, vision=True, reasoning=True, list_models=True),
+    family_rules=[(r"llama", "Llama"), (r"qwen", "Qwen"), (r"deepseek", "DeepSeek"), (r"mistral|mixtral", "Mistral"), (r"gemma", "Gemma"), (r"phi", "Phi")],
+    notes="Routes to HF Inference Providers (Cerebras, Groq, Together…) with one token.",
+))
+register(ProviderSpec(
+    id="fireworks", name="Fireworks AI", docs_url="https://docs.fireworks.ai", console_url="https://fireworks.ai/account/api-keys",
+    credential_fields=[API_KEY], config_fields=[BASE_URL], default_base_url="https://api.fireworks.ai/inference/v1",
+    capabilities=caps(tools=True, json_mode=True, vision=True, reasoning=True, embeddings=True, image_generation=True),
+    family_rules=[(r"llama", "Llama"), (r"qwen", "Qwen"), (r"deepseek", "DeepSeek"), (r"mistral|mixtral", "Mistral"), (r"kimi", "Kimi"), (r"gpt-oss", "OpenAI OSS"), (r"flux|stable", "Images")],
+))
+register(ProviderSpec(
+    id="deepinfra", name="DeepInfra", docs_url="https://deepinfra.com/docs", console_url="https://deepinfra.com/dash/api_keys",
+    credential_fields=[API_KEY], config_fields=[BASE_URL], default_base_url="https://api.deepinfra.com/v1/openai",
+    capabilities=caps(tools=True, json_mode=True, vision=True, reasoning=True, embeddings=True),
+    family_rules=[(r"llama", "Llama"), (r"qwen", "Qwen"), (r"deepseek", "DeepSeek"), (r"mistral|mixtral", "Mistral"), (r"gemma", "Gemma"), (r"embed|bge", "Embeddings")],
+))
+register(ProviderSpec(
+    id="ollama", name="Ollama (local)", docs_url="https://github.com/ollama/ollama/blob/main/docs/openai.md", console_url="https://ollama.com/download",
+    credential_fields=[CredentialField("api_key", "API key", secret=True, required=False, placeholder="not needed for a local server (or your ollama.com key)")],
+    config_fields=[CredentialField("base_url", "Base URL", secret=False, required=True, placeholder="http://127.0.0.1:11434/v1")],
+    default_base_url="http://127.0.0.1:11434/v1",
+    capabilities=caps(tools=True, json_mode=True, vision=True, embeddings=True),
+    family_rules=[(r"llama", "Llama"), (r"qwen", "Qwen"), (r"deepseek", "DeepSeek"), (r"mistral|mixtral", "Mistral"), (r"gemma", "Gemma"), (r"phi", "Phi"), (r"embed", "Embeddings")],
+    notes="Runs on your own machine; Flowboard's server must be able to reach the URL (use a tunnel or Tailscale for a remote Ollama).",
+))
+register(ProviderSpec(
+    id="lmstudio", name="LM Studio (local)", docs_url="https://lmstudio.ai/docs/app/api/endpoints/openai", console_url="https://lmstudio.ai",
+    credential_fields=[CredentialField("api_key", "API key", secret=True, required=False, placeholder="optional")],
+    config_fields=[CredentialField("base_url", "Base URL", secret=False, required=True, placeholder="http://127.0.0.1:1234/v1")],
+    default_base_url="http://127.0.0.1:1234/v1",
+    capabilities=caps(tools=True, json_mode=True, embeddings=True),
+    notes="Start the LM Studio local server first (Developer tab).",
+))
+register(ProviderSpec(
+    id="vllm", name="vLLM / self-hosted", docs_url="https://docs.vllm.ai/en/latest/serving/openai_compatible_server.html", console_url="",
+    credential_fields=[CredentialField("api_key", "API key", secret=True, required=False, placeholder="whatever you started the server with (--api-key)")],
+    config_fields=[CredentialField("base_url", "Base URL", secret=False, required=True, placeholder="http://gpu-box:8000/v1")],
+    default_base_url="",
+    capabilities=caps(tools=True, json_mode=True, embeddings=True),
+    notes="Also works for llama.cpp server, TGI, SGLang and LocalAI.",
+))
+register(ProviderSpec(
     id="custom_openai", name="Custom OpenAI-compatible", docs_url="", console_url="",
     credential_fields=[CredentialField("api_key", "API key", secret=True, required=False, placeholder="leave blank for local servers (Ollama, LM Studio, vLLM)")],
     config_fields=[CredentialField("base_url", "Base URL", secret=False, required=True, placeholder="http://127.0.0.1:11434/v1"), CredentialField("label", "Display name", secret=False, required=False, placeholder="My local Ollama")],

@@ -3,7 +3,7 @@
 {% block content %}
 <div class="settings">
   <nav class="settingsnav">
-    {% for key, label in [('account','Account'),('ai-providers','AI Providers'),('ai-defaults','AI Defaults'),('ai-usage','AI Usage'),('calendars','Calendars & Integrations'),('security','Security'),('board-defaults','Board Defaults')] %}
+    {% for key, label in [('account','Account'),('schedule','Schedule & Calibration'),('ai-providers','AI Providers'),('ai-defaults','AI Defaults'),('ai-usage','AI Usage'),('calendars','Calendars & Integrations'),('security','Security'),('board-defaults','Board Defaults')] %}
     <a href="/settings/{{ key }}" class="{% if section == key %}active{% endif %}">{{ label }}</a>
     {% endfor %}
   </nav>
