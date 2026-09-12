@@ -1,4 +1,4 @@
-<section id="board" class="board" data-slug="{{ board.slug }}" {% if expand_task %}data-expand="{{ expand_task }}"{% endif %} hx-get="/boards/{{ board.slug }}/" hx-trigger="boardChanged from:body" hx-select="#board" hx-swap="outerHTML">
+<section id="board" class="board" data-slug="{{ board.slug }}" {% if expand_task %}data-expand="{{ expand_task }}"{% endif %} hx-get="/boards/{{ board.slug }}/" hx-trigger="boardChanged from:body" hx-select="#board" hx-swap="outerHTML" hx-disinherit="hx-select hx-trigger">
   {% if ai_error %}<div class="flash bad">AI: {{ ai_error }}</div>{% endif %}
   <div class="stats muted small">
     {{ stats.open }} open · {{ stats.done }} done · {{ stats.overdue }} overdue · {{ stats.blocked }} blocked · {{ stats.minutes_open }} min estimated

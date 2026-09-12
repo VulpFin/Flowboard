@@ -218,3 +218,12 @@ def test_tg11_vault_push(db, alice, client, monkeypatch):
     assert client.get("/settings/ai-providers").status_code == 200
     r = client.get("/auth/tg11/login?push=openai", follow_redirects=False)  # discovery against accounts.test fails -> graceful error redirect
     assert r.status_code == 303 and ("accounts.test/" in r.headers["location"] or "err=" in r.headers["location"])
+
+
+def test_board_section_does_not_leak_hx_select_to_children(client, db, alice):
+    """Regression: hx-select="#board" on the section is inherited by htmx children (the
+    Edit button's response was filtered to nothing). hx-disinherit must be present."""
+    client.login("alice@example.com")
+    r = client.post("/boards/personal/tasks", data={"title": "Editable"}, headers={"HX-Request": "true"})
+    m = re.search(r'<section id="board"[^>]*>', r.text).group(0)
+    assert 'hx-disinherit="hx-select' in m

@@ -1,6 +1,6 @@
 # Implementation report — Phase 2 (Flowboard 2.1 + TG11 Accounts 0.2)
 
-Date: 2026-09-12 · Deployed: flowboard.fyi 2.1.0 (commit 9d97835 + follow-up), accounts.tg11.org 0.2.0 (commit fcead8f)
+Date: 2026-09-12 · Deployed: flowboard.fyi 2.1.1 (commit 34f5bb9), accounts.tg11.org 0.2.1 (commit cd0c62e)
 
 ## What was asked
 > accounts.tg11.org: header image, profile image, bio, phone number, optional payment holds, buttons to the other TG11 apps, request-to-change-email, AI in accounts too.
@@ -35,12 +35,12 @@ Server: `TG11_VAULT_KEY` generated and added to `/var/www/TG11Accounts/.env` (ow
 | Tutorial board | 🎓 *Getting started* | 11 sequenced tasks, seeded for new accounts and for existing accounts on next visit; *Recreate* in Settings → Account |
 | More AI providers | Settings → AI Providers | + Azure OpenAI, Hugging Face Inference Providers, Fireworks AI, DeepInfra, Ollama, LM Studio, vLLM/self-hosted (27 providers total) |
 | More AI features | Assistant chips | *Daily briefing*, *Notes → tasks*, *Fit my schedule*; proposals may set `scheduled_date` |
-| TG11 vault sync | Settings → AI Providers → *Sync from TG11* | one click: TG11 login with `tg11.ai`, keys copied into Flowboard's encrypted store; also happens automatically on TG11 sign-in when the scope is granted |
+| TG11 vault sync (two-way, 2.1.1) | Settings → AI Providers → *⬇ Pull from TG11* / *⬆ Push to TG11* | Pull copies vault keys into Flowboard (also automatic on TG11 sign-in with the scope); Push sends all or one provider's key to the vault via `PUT /api/v1/ai/credentials` (TG11 0.2.1). Each direction overwrites the same provider on the receiving side; entries without a secret are skipped, never blanked; TG11 shows *via flowboard* on pushed keys |
 | TG11 back-link | on link/sign-up | Flowboard registers the identity link at TG11 (`/api/v1/links`) so TG11's account page can show it |
 
 Migration `0002` adds `task_reflections`, `tasks.scheduled_date/rollover_count/instructions`, profile `work_schedule_json/calibration_json/tutorial_seeded/tg11_vault_synced_at`. It was rewritten to plain `ADD COLUMN` after the first production run failed: Alembic's SQLite batch mode rebuilds the table and the live DB had a profile pointing at a deleted board (FK violation). The migration is now idempotent and cleans up `_alembic_tmp_*` leftovers. DB backed up before deploy (`data/flowboard.sqlite3.bak-v2.0-*`).
 
-Tests: Flowboard 36 passed (8 new), TG11 9 passed. Public smoke test with a throwaway account: register → tutorial board (11 cards) → Done → reflection saved → schedule pages → provider forms → auto-schedule — all 200; account removed afterwards.
+Tests: Flowboard 37 passed (9 new), TG11 9 passed. Public smoke test with a throwaway account: register → tutorial board (11 cards) → Done → reflection saved → schedule pages → provider forms → auto-schedule — all 200; account removed afterwards.
 
 ## Things I'd suggest next (not built)
 

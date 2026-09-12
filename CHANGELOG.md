@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.2 — 2026-09-12
+
+* Fix: the task *Edit* button rendered an empty card — the board section's `hx-select="#board"` was inherited by child htmx requests and filtered the edit form away. Added `hx-disinherit`.
+
 ## 2.1.0 — 2026-09-12
 
 * Board UI: every context column collapses, every task card expands (state remembered per board in the browser); *expand/collapse all*.
