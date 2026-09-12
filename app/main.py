@@ -29,6 +29,30 @@ log = logging.getLogger("flowboard")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
 
+class HeadAsGetMiddleware:
+    """Serve HEAD for every GET route (monitors, link checkers, Cloudflare)."""
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope.get("type") == "http" and scope.get("method") == "HEAD":
+            scope = dict(scope, method="GET")
+
+            body_sent = {"done": False}
+
+            async def _send(message):
+                if message["type"] == "http.response.body":
+                    if body_sent["done"]:
+                        return
+                    body_sent["done"] = True
+                    message = dict(message, body=b"", more_body=False)
+                await send(message)
+
+            return await self.app(scope, receive, _send)
+        return await self.app(scope, receive, send)
+
+
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
         response = await call_next(request)
@@ -59,6 +83,7 @@ def create_app() -> FastAPI:
 
         app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
     app.add_middleware(SecurityHeadersMiddleware)
+    app.add_middleware(HeadAsGetMiddleware)
     if not settings.is_dev:
         app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.allowed_hosts)
 
