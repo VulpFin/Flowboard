@@ -64,7 +64,7 @@ def add_task(request: Request, title: str = Form(...), description: str = Form("
         raise HTTPException(400, str(exc))
     if deps.is_htmx(request):
         return _board_partial(request, db, board, {"ai_error": ai_error})
-    return deps.redirect(f"/boards/{board.slug}/")
+    return deps.redirect(f"/boards/{board_service.ref_for(board, user)}/")
 
 
 def _reflect_ctx(user: User, task, *, actual_min: Optional[int] = None, force_full: bool = False) -> dict:
@@ -99,7 +99,7 @@ def mark_done(request: Request, task_id: str, actual_min: Optional[str] = Form(N
     _after_change(db, board, t, user)
     if deps.is_htmx(request):
         return _board_partial(request, db, board, _reflect_ctx(user, t, actual_min=elapsed))
-    return deps.redirect(f"/boards/{board.slug}/")
+    return deps.redirect(f"/boards/{board_service.ref_for(board, user)}/")
 
 
 @router.post("/tasks/{task_id}/reflect", dependencies=[Depends(deps.csrf_protect)])
@@ -146,7 +146,7 @@ def assign_task(request: Request, task_id: str, assigned_to_id: str = Form(""), 
         task_service.log_activity(db, board, task_id=t.id, actor_id=user.id, action="assigned", summary=f"Assigned “{t.title}” to {who.display_name or who.username}" if who else f"Unassigned “{t.title}”")
     if deps.is_htmx(request):
         return _board_partial(request, db, board)
-    return deps.redirect(f"/boards/{board.slug}/")
+    return deps.redirect(f"/boards/{board_service.ref_for(board, user)}/")
 
 
 @router.post("/tasks/{task_id}/instructions", dependencies=[Depends(deps.csrf_protect)])
@@ -175,7 +175,7 @@ def schedule_auto(request: Request, reschedule_all: Optional[str] = Form(None), 
     task_service.log_activity(db, board, actor_id=user.id, actor_kind="system", action="scheduled", summary=f"Auto-scheduled {n} task(s) within daily capacity")
     if deps.is_htmx(request):
         return _board_partial(request, db, board)
-    return deps.redirect(f"/boards/{board.slug}/schedule?msg=Scheduled+{n}+task(s)")
+    return deps.redirect(f"/boards/{board_service.ref_for(board, user)}/schedule?msg=Scheduled+{n}+task(s)")
 
 
 @router.post("/schedule/rollover", dependencies=[Depends(deps.csrf_protect)])
@@ -183,7 +183,7 @@ def schedule_rollover(request: Request, board: Board = Depends(deps.current_boar
     n = schedule_service.rollover(db, user, board)
     if deps.is_htmx(request):
         return _board_partial(request, db, board)
-    return deps.redirect(f"/boards/{board.slug}/schedule?msg=Rolled+over+{n}+task(s)")
+    return deps.redirect(f"/boards/{board_service.ref_for(board, user)}/schedule?msg=Rolled+over+{n}+task(s)")
 
 
 @router.post("/tasks/{task_id}/schedule", dependencies=[Depends(deps.csrf_protect)])
@@ -194,7 +194,7 @@ def task_schedule(request: Request, task_id: str, scheduled_date: str = Form("")
     task_service.update_task(db, board, t, {"scheduled_date": scheduled_date or None, "scheduled_start": scheduled_start or None}, actor_id=user.id)
     if deps.is_htmx(request):
         return _board_partial(request, db, board)
-    return deps.redirect(request.headers.get("referer") or f"/boards/{board.slug}/schedule")
+    return deps.redirect(request.headers.get("referer") or f"/boards/{board_service.ref_for(board, user)}/schedule")
 
 
 @router.delete("/tasks/{task_id}", dependencies=[Depends(deps.csrf_protect)])
@@ -205,7 +205,7 @@ def delete_task(request: Request, task_id: str, board: Board = Depends(deps.curr
     for link in cal_links.links_for_task(db, t):
         cal_links.unlink(db, user, link, delete_remote=True)
     task_service.delete_task(db, board, t, actor_id=user.id)
-    return _board_partial(request, db, board) if deps.is_htmx(request) else deps.redirect(f"/boards/{board.slug}/")
+    return _board_partial(request, db, board) if deps.is_htmx(request) else deps.redirect(f"/boards/{board_service.ref_for(board, user)}/")
 
 
 @router.get("/tasks/{task_id}/edit")
@@ -225,7 +225,7 @@ def edit_task(request: Request, task_id: str, title: str = Form(...), descriptio
              "contexts": [c.strip() for c in contexts.split(",") if c.strip()] or t.contexts, "depends_on": depends_on.split()}
     task_service.update_task(db, board, t, patch, actor_id=user.id)
     _after_change(db, board, t, user)
-    return _board_partial(request, db, board) if deps.is_htmx(request) else deps.redirect(f"/boards/{board.slug}/")
+    return _board_partial(request, db, board) if deps.is_htmx(request) else deps.redirect(f"/boards/{board_service.ref_for(board, user)}/")
 
 
 @router.post("/tasks/{task_id}/reeval", dependencies=[Depends(deps.csrf_protect)])

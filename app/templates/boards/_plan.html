@@ -1,5 +1,5 @@
 {% set idlist = plan | map(attribute='id') | join(',') %}
-<a id="ics-link" class="linkbtn" hx-swap-oob="outerHTML" href="/boards/{{ board.slug }}/plan.ics?ids={{ idlist|urlencode }}&window={{ window_used }}{% if start_context %}&start_context={{ start_context|urlencode }}{% endif %}" title="Export the current plan to your calendar">Plan .ics</a>
+<a id="ics-link" class="linkbtn" hx-swap-oob="outerHTML" href="/boards/{{ board_ref }}/plan.ics?ids={{ idlist|urlencode }}&window={{ window_used }}{% if start_context %}&start_context={{ start_context|urlencode }}{% endif %}" title="Export the current plan to your calendar">Plan .ics</a>
 {% if plan %}
 <h3>Best path forward</h3>
 <ol>

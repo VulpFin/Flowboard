@@ -7,14 +7,32 @@
 Every board-scoped entity carries `board_id`: `tasks`, `task_activity`,
 `ai_change_sets`, `calendar_event_links`, `calendar_feed_tokens`.
 
-## URLs
+## URLs and board references (2.3)
 
-`/boards/<slug>/…` — the slug is resolved **within the current user's
-memberships**, so two users can both have `/boards/work/`. A board can also be
-addressed by its UUID (`/boards/<uuid>/`). Integer ids are never exposed.
+Slugs are unique **per owner**, so on a shared board two people can each have a
+board called "personal". A board reference is therefore one of:
 
-Board-level routes: `/boards/<slug>/` (view), `/settings`, `/activity`,
-`/tasks…`, `/plan`, `/plan.ics`, `/export.ics`, `/ai/…`, `/feed/…`.
+| form | meaning |
+|---|---|
+| `personal` | *your own* board with that slug |
+| `alice~personal` | the board `alice` owns — the qualified form, unique and stable |
+| `<uuid>` | any board, by id |
+
+`boards.ref_for(board, user)` returns the reference that user should follow
+(bare slug for your own boards, qualified otherwise) and is what every template
+and redirect emits — `{{ board_ref }}` for the current board, `{{ ref_for(b,
+user) }}` in lists. `~` is the separator because `slugify` can never produce it.
+
+`get_board_for_user` resolves in this order: UUID → qualified `owner~slug`
+(which deliberately does **not** fall back to a board of your own with the same
+slug) → a board *you own* with that slug → the oldest board you are a member of
+with that slug. Membership and role are enforced afterwards either way, so a
+qualified reference to a board you are not on is indistinguishable from one
+that does not exist.
+
+Board-level routes: `/boards/<ref>/` (view), `/settings`, `/activity`,
+`/tasks…`, `/plan`, `/plan.ics`, `/export.ics`, `/ai/…`, `/feed/…`,
+`/members/…`, `/invites/<id>/revoke`.
 
 ## Authorization
 
@@ -26,12 +44,37 @@ or `BoardAccessDenied` if the role is insufficient. FastAPI dependencies
 Tasks are always looked up **through the board** (`tasks.get_task(db, board,
 id)`), so a task id from another board resolves to nothing.
 
-## Membership (future shared boards)
+## Membership and invitations (2.3)
 
 `board_memberships(board_id, user_id, role, invited_by_id, accepted)` with
-roles `owner > admin > editor > viewer`. The owner always has an `owner` row;
-the UI for inviting others is not built yet but nothing in the schema or the
-authorization code needs to change.
+roles `owner > admin > editor > viewer`. The owner always has an `owner` row.
+A membership row means *someone who said yes*: pending invitations live in
+their own table.
+
+`board_invites(board_id, email, role, token_hash, token_prefix, invited_by_id,
+message, created_at, expires_at, accepted_at/by, declined_at, revoked_at)`:
+
+* Board admins invite by **email** (Board settings → Members), so the person
+  does not need an account yet — they register with that address and the
+  invitation is waiting at `/invites`.
+* The emailed link carries a 256-bit token; only its SHA-256 is stored. It
+  expires after `invites.INVITE_TTL_DAYS` (14), is single use, and `accept()`
+  refuses unless the signed-in account *is* the invited address — a leaked link
+  gets somebody else nothing. Re-inviting the same address revokes the old
+  token. Acceptance from the `/invites` list works without the token because
+  being signed in as that address is the same proof.
+* Only `owner`/`admin` may invite, change roles or remove members. The owner's
+  role cannot be changed and the owner cannot be removed; ownership is not
+  transferable from the UI. Any member can **leave** a board they do not own.
+* Removing a member (or leaving) unassigns their tasks on that board and clears
+  those tasks' day/slot, so the work re-plans against the owner's capacity, and
+  the board stops being that person's default.
+
+Roles in practice: `viewer` reads; `editor` adds and changes tasks; `admin`
+also manages members. Assignment (`tasks.assigned_to_id`) is what connects
+membership to scheduling — see SCHEDULING_AND_CALIBRATION.md for how a task
+consumes the assignee's capacity and what the "who has room this week" panel
+does (and does not) reveal.
 
 ## Settings inheritance
 

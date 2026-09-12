@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Schedule · {{ board.name }} · {{ site_name }}{% endblock %}
 {% block topbar %}
-<a class="linkbtn" href="/boards/{{ board.slug }}/">← Board</a>
+<a class="linkbtn" href="/boards/{{ board_ref }}/">← Board</a>
 <a class="linkbtn" href="/settings/schedule" title="Daily limits, start/end times, days off">Work schedule</a>
 {% endblock %}
 {% block content %}
@@ -14,9 +14,9 @@
     <a class="linkbtn" href="?start={{ next }}&days={{ days }}">later ›</a>
     <a class="linkbtn" href="?start={{ start.isoformat() }}&days={{ 14 if days == 7 else 7 }}">{{ '2 weeks' if days == 7 else '1 week' }}</a>
     {% if can_edit %}
-    <form method="post" action="/boards/{{ board.slug }}/schedule/auto" style="display:inline"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="btn primary" title="Place every unscheduled task on the first day with room">Auto-schedule unscheduled</button></form>
-    <form method="post" action="/boards/{{ board.slug }}/schedule/auto" style="display:inline" onsubmit="return confirm('Re-place every open task on this board?')"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="reschedule_all" value="1"><button class="btn" title="Discard current days and re-plan the whole board">Re-plan all</button></form>
-    <form method="post" action="/boards/{{ board.slug }}/schedule/rollover" style="display:inline"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="btn" title="Move anything unfinished from past days forward">Roll over now</button></form>
+    <form method="post" action="/boards/{{ board_ref }}/schedule/auto" style="display:inline"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="btn primary" title="Place every unscheduled task on the first day with room">Auto-schedule unscheduled</button></form>
+    <form method="post" action="/boards/{{ board_ref }}/schedule/auto" style="display:inline" onsubmit="return confirm('Re-place every open task on this board?')"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="reschedule_all" value="1"><button class="btn" title="Discard current days and re-plan the whole board">Re-plan all</button></form>
+    <form method="post" action="/boards/{{ board_ref }}/schedule/rollover" style="display:inline"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="btn" title="Move anything unfinished from past days forward">Roll over now</button></form>
     {% endif %}
   </div>
 </div>
@@ -34,7 +34,7 @@
         <div>{% if t.scheduled_start %}<span class="slot">{{ t.scheduled_start }}</span> {% endif %}<b>{{ t.title }}</b> <span class="muted small">{{ t.estimate_min }}m · {{ t.energy }}{% if t.due %} · due {{ t.due }}{% endif %}{% if t.rollover_count %} · ↻{{ t.rollover_count }}{% endif %}{% if t.assigned_to_id and member_names.get(t.assigned_to_id) %} · 👤 {{ member_names[t.assigned_to_id] }}{% endif %}</span></div>
         {% if t.board_id != board.id %}<div class="muted small">{{ board_names[t.board_id].icon }} {{ board_names[t.board_id].name }}</div>
         {% elif can_edit %}
-        <form method="post" action="/boards/{{ board.slug }}/tasks/{{ t.id }}/schedule" class="row">
+        <form method="post" action="/boards/{{ board_ref }}/tasks/{{ t.id }}/schedule" class="row">
           <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
           <input type="date" name="scheduled_date" value="{{ t.scheduled_date.isoformat() }}" class="mini">
           <input type="time" name="scheduled_start" value="{{ t.scheduled_start or '' }}" class="mini" title="Time of day">
@@ -74,7 +74,7 @@
   <ul class="plain">
   {% for t in unscheduled %}
     <li class="schedtask"><b>{{ t.title }}</b> <span class="muted small">{{ t.estimate_min }}m · {{ t.energy }}{% if t.due %} · due {{ t.due }}{% endif %}</span>
-      {% if can_edit %}<form method="post" action="/boards/{{ board.slug }}/tasks/{{ t.id }}/schedule" style="display:inline"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="date" name="scheduled_date" class="mini"><button class="mini">Set day</button></form>{% endif %}
+      {% if can_edit %}<form method="post" action="/boards/{{ board_ref }}/tasks/{{ t.id }}/schedule" style="display:inline"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="date" name="scheduled_date" class="mini"><button class="mini">Set day</button></form>{% endif %}
     </li>
   {% endfor %}
   </ul>

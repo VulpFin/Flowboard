@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.3.0 — 2026-09-12
+
+* **Board invitations.** Board settings → Members: invite by email with a role, see and revoke pending invitations, change a member's role, remove a member, and (as a member) leave a board. The invited person does not need an account yet — they register with that address and the invitation is waiting at `/invites`, also shown as a ✉ badge in the top bar. The emailed link carries a 256-bit token stored only as a hash: 14-day expiry, single use, and it can only be redeemed by the address it was sent to. Re-inviting rotates the token; removing a member (or leaving) unassigns their tasks on that board so the work re-plans against the owner's capacity.
+* **Unambiguous board URLs.** Slugs are unique per owner, so on a shared board two people could each have `/boards/personal/`. Your own boards keep the bare slug; a board someone else owns is addressed as `owner~slug` (`/boards/alice~personal/`), which every link, form and redirect now emits. A qualified reference never falls back to a board of your own with the same slug, and membership is still enforced, so it leaks nothing.
+* A board you are only a *member* of can no longer become your default board.
+* Migration `0004` (`board_invites`).
+
 ## 2.2.1 — 2026-09-12
 
 * The focus timer and the reflection nudge now agree: when the timer measured the real duration, the one-click nudge records *those* minutes ("you focused for 52 min — record that?") instead of the estimate, and *No, tell me more* carries the measured value into the full form.

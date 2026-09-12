@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Board invitation · {{ site_name }}{% endblock %}
+{% block content %}
+<section class="panel narrow">
+{% if problem %}
+  <h2>Invitation</h2>
+  <div class="flash bad">{{ problem }}</div>
+  {% if invite and invite.email != user.email %}
+  <p class="muted small">Sign in as {{ invite.email }} (or ask for a new invitation to {{ user.email }}) and open the link again.</p>
+  {% endif %}
+  <a class="btn" href="/boards">Your boards</a>
+{% else %}
+  <h2>{{ invite.board.icon }} {{ invite.board.name }}</h2>
+  <p>{{ invite.board.owner.display_name or invite.board.owner.username }} invited you to join this board as <b>{{ invite.role }}</b>.</p>
+  {% if invite.message %}<p class="desc">“{{ invite.message }}”</p>{% endif %}
+  {% if invite.board.description %}<p class="muted">{{ invite.board.description }}</p>{% endif %}
+  <p class="muted small">As {{ invite.role }} you can {{ 'read this board' if invite.role == 'viewer' else 'add and change tasks' }}{{ ', invite people and manage members' if invite.role == 'admin' else '' }}. Tasks assigned to you are scheduled against your own work schedule, calendar and workload — other members only ever see how many minutes you have free, never what your other boards contain.</p>
+  <div class="row">
+    <form method="post" action="/invites/{{ token }}/accept"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="btn primary">Accept invitation</button></form>
+    <form method="post" action="/invites/{{ token }}/decline"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="btn">Decline</button></form>
+  </div>
+{% endif %}
+</section>
+{% endblock %}

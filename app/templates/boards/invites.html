@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Invitations · {{ site_name }}{% endblock %}
+{% block content %}
+<h2>Board invitations</h2>
+{% if invites %}
+<p class="muted">Boards other people have invited you to. Accepting adds them to your board list; work assigned to you is then planned against your own schedule and capacity.</p>
+<div class="grid">
+  {% for i in invites %}
+  <div class="panel">
+    <h3>{{ i.board.icon }} {{ i.board.name }}</h3>
+    <p class="muted small">from {{ i.board.owner.display_name or i.board.owner.username }} · as <b>{{ i.role }}</b> · expires {{ i.expires_at.strftime('%Y-%m-%d') }}</p>
+    {% if i.message %}<p class="desc">“{{ i.message }}”</p>{% endif %}
+    <div class="row">
+      <form method="post" action="/invites/id/{{ i.id }}/accept"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="btn primary">Accept</button></form>
+      <form method="post" action="/invites/id/{{ i.id }}/decline"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="btn">Decline</button></form>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<section class="panel"><p class="muted">No invitations waiting. When someone invites you to a board it appears here and in your email.</p></section>
+{% endif %}
+{% endblock %}

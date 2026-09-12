@@ -483,4 +483,7 @@ def test_migrations_apply_to_an_existing_database(tmp_path, stop_at):
         assert "digest_json" in prof
         assert {"busy_enabled", "busy_cache_json", "busy_fetched_at"} <= conn_cols
         assert "hour_of_day" in refl
-        assert rev == "0003"
+        # whatever the newest migration is, "upgrade head" must land on it
+        revisions = sorted(re.findall(r"^revision = '(\d+)'", (REPO / "migrations" / "versions" / f.name).read_text(), re.M)[0]
+                           for f in (REPO / "migrations" / "versions").glob("[0-9]*.py"))
+        assert rev == revisions[-1]

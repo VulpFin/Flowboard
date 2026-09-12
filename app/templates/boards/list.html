@@ -5,12 +5,14 @@
 <div class="grid">
   {% for b in all_boards %}
   <div class="panel boardcard {% if b.is_archived %}archived{% endif %}" style="{% if b.color %}border-top:4px solid {{ b.color }}{% endif %}">
-    <h3><a href="/boards/{{ b.slug }}/">{{ b.icon }} {{ b.name }}</a> {% if b.id == default_board_id %}<span class="tag">default</span>{% endif %}{% if b.is_archived %}<span class="tag">archived</span>{% endif %}</h3>
+    <h3><a href="/boards/{{ ref_for(b, user) }}/">{{ b.icon }} {{ b.name }}</a> {% if b.id == default_board_id %}<span class="tag">default</span>{% endif %}{% if b.is_archived %}<span class="tag">archived</span>{% endif %}{% if b.owner_id != user.id %}<span class="tag" title="Shared with you by {{ b.owner.username }}">shared</span>{% endif %}</h3>
+    {% if b.owner_id != user.id %}<p class="muted small">{{ b.owner.display_name or b.owner.username }}’s board · you are {{ my_role.get(b.id) or 'a member' }} · <code>/boards/{{ ref_for(b, user) }}/</code></p>{% endif %}
     {% if b.description %}<p class="muted">{{ b.description }}</p>{% endif %}
     <p class="muted small">{{ counts[b.id].open }} open · {{ counts[b.id].done }} done{% if counts[b.id].overdue %} · <b>{{ counts[b.id].overdue }} overdue</b>{% endif %}</p>
     <div class="row">
-      {% if b.id != default_board_id and not b.is_archived %}<form method="post" action="/boards/{{ b.slug }}/make-default"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button>Make default</button></form>{% endif %}
-      {% if b.owner_id == user.id %}<a class="btn-link" href="/boards/{{ b.slug }}/settings">Settings</a>{% endif %}
+      {% if b.id != default_board_id and not b.is_archived and b.owner_id == user.id %}<form method="post" action="/boards/{{ ref_for(b, user) }}/make-default"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button>Make default</button></form>{% endif %}
+      {% if my_role.get(b.id) in ('owner', 'admin') %}<a class="btn-link" href="/boards/{{ ref_for(b, user) }}/settings">Settings</a>{% endif %}
+      {% if b.owner_id != user.id %}<form method="post" action="/boards/{{ ref_for(b, user) }}/members/leave" onsubmit="return confirm('Leave “{{ b.name }}”? Tasks assigned to you there become unassigned.')"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="mini">Leave</button></form>{% endif %}
     </div>
   </div>
   {% endfor %}

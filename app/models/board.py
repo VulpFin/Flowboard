@@ -10,13 +10,14 @@ boards need no schema change.
 from __future__ import annotations
 
 import enum
+from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Boolean, ForeignKey, Index, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..db import Base
-from .common import TimestampMixin, UUIDPrimaryKeyMixin
+from .common import TimestampMixin, UUIDPrimaryKeyMixin, utcnow
 
 
 class BoardRole(str, enum.Enum):
@@ -51,6 +52,9 @@ class Board(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     position: Mapped[int] = mapped_column(default=0, nullable=False)
 
     memberships: Mapped[list["BoardMembership"]] = relationship(back_populates="board", cascade="all, delete-orphan")
+    #: the owning user - lets any code that holds a Board build its public
+    #: reference ("<owner>~<slug>") without another query
+    owner: Mapped["User"] = relationship("User", lazy="selectin")
 
     def __repr__(self) -> str:  # pragma: no cover
         return f"<Board {self.slug} owner={self.owner_id}>"
@@ -74,3 +78,48 @@ class BoardMembership(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     @property
     def role_enum(self) -> BoardRole:
         return BoardRole(self.role)
+
+
+class BoardInvite(UUIDPrimaryKeyMixin, Base):
+    """A pending invitation to join a board.
+
+    Invitations are addressed to an *email*, not a user, so you can invite
+    someone who has not signed up yet: they register with that address and the
+    invitation is waiting for them at /invites.  The emailed link carries a
+    256-bit token; only its hash is stored, exactly like password-reset and
+    calendar-feed tokens.  Membership rows are created on acceptance, so
+    "member" continues to mean "someone who said yes".
+    """
+
+    __tablename__ = "board_invites"
+    __table_args__ = (Index("ix_board_invites_email", "email"), Index("ix_board_invites_board", "board_id"))
+
+    board_id: Mapped[str] = mapped_column(ForeignKey("boards.id", ondelete="CASCADE"), nullable=False)
+    email: Mapped[str] = mapped_column(String(254), nullable=False)
+    role: Mapped[str] = mapped_column(String(16), default=BoardRole.EDITOR.value, nullable=False)
+    token_hash: Mapped[str] = mapped_column(String(128), unique=True, nullable=False)
+    token_prefix: Mapped[str] = mapped_column(String(12), default="", nullable=False)
+    invited_by_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
+    message: Mapped[str] = mapped_column(String(500), default="", nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    accepted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    accepted_by_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
+    declined_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    revoked_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
+    board: Mapped["Board"] = relationship("Board", lazy="selectin")
+
+    @property
+    def is_open(self) -> bool:
+        return not (self.accepted_at or self.declined_at or self.revoked_at) and self.expires_at > utcnow()
+
+    @property
+    def state(self) -> str:
+        if self.accepted_at:
+            return "accepted"
+        if self.declined_at:
+            return "declined"
+        if self.revoked_at:
+            return "revoked"
+        return "pending" if self.expires_at > utcnow() else "expired"

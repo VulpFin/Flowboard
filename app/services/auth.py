@@ -73,10 +73,12 @@ def ensure_default_board(db: Session, user: User) -> Board:
         board = db.get(Board, profile.default_board_id)
         if board is not None and board.owner_id == user.id:
             return board
-    boards = list_boards_for_user(db, user, include_archived=False)
-    if boards:
-        profile.default_board_id = boards[0].id
-        return boards[0]
+    # only a board you *own* can become your default: being a member of someone
+    # else's board should never silently make it your home page
+    owned = [b for b in list_boards_for_user(db, user, include_archived=False) if b.owner_id == user.id]
+    if owned:
+        profile.default_board_id = owned[0].id
+        return owned[0]
     board = create_board(db, user, name="Personal", description="Your default board", icon="🗂️")
     profile.default_board_id = board.id
     db.flush()

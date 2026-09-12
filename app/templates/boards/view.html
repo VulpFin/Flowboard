@@ -1,17 +1,17 @@
 {% extends "base.html" %}
 {% block title %}{{ board.name }} · {{ site_name }}{% endblock %}
 {% block topbar %}
-<form class="planform" hx-post="/boards/{{ board.slug }}/plan" hx-target="#plan" hx-swap="innerHTML">
+<form class="planform" hx-post="/boards/{{ board_ref }}/plan" hx-target="#plan" hx-swap="innerHTML">
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
   <input type="number" name="window" placeholder="Window (min)" min="15" step="15" value="{{ user.profile.work_day_minutes if user.profile else 480 }}" title="Time budget for this plan in minutes (default: your work day)." />
   <input type="text" name="start_context" placeholder="Start context (optional)" title="Soft bias for the first task's context (e.g. Excel, Email, Coding)." />
   <button type="submit" title="Compute the best path within the time budget.">Plan</button>
 </form>
-<a id="ics-link" class="linkbtn" href="/boards/{{ board.slug }}/plan.ics" title="Export the current plan to your calendar">Plan .ics</a>
-<a class="linkbtn" href="/boards/{{ board.slug }}/export.ics" title="Export every dated task on this board as an iCalendar file">Board .ics</a>
-<a class="linkbtn" href="/boards/{{ board.slug }}/schedule" title="Day-by-day schedule within your daily limits">Schedule</a>
-<a class="linkbtn" href="/boards/{{ board.slug }}/activity" title="History">Activity</a>
-{% if can_edit %}<a class="linkbtn" href="/boards/{{ board.slug }}/settings" title="Board settings">Board settings</a>{% endif %}
+<a id="ics-link" class="linkbtn" href="/boards/{{ board_ref }}/plan.ics" title="Export the current plan to your calendar">Plan .ics</a>
+<a class="linkbtn" href="/boards/{{ board_ref }}/export.ics" title="Export every dated task on this board as an iCalendar file">Board .ics</a>
+<a class="linkbtn" href="/boards/{{ board_ref }}/schedule" title="Day-by-day schedule within your daily limits">Schedule</a>
+<a class="linkbtn" href="/boards/{{ board_ref }}/activity" title="History">Activity</a>
+{% if can_edit %}<a class="linkbtn" href="/boards/{{ board_ref }}/settings" title="Board settings">Board settings</a>{% endif %}
 {% endblock %}
 {% block content %}
 <div class="boardhead">
@@ -25,7 +25,7 @@
 <section class="new-task panel">
   <details id="addtask" open>
   <summary><h3 style="display:inline">Add task</h3></summary>
-  <form hx-post="/boards/{{ board.slug }}/tasks" hx-target="#board" hx-swap="outerHTML" class="taskform">
+  <form hx-post="/boards/{{ board_ref }}/tasks" hx-target="#board" hx-swap="outerHTML" class="taskform">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <input name="title" placeholder="Title" required />
     <input name="description" placeholder="Description" />
@@ -54,7 +54,7 @@
   <section class="panel assistant" id="assistant">
     <h3>Assistant {% if ai_model %}<span class="tag" title="Effective model (board → account → provider default)">{{ ai_model }}</span>{% endif %}</h3>
     {% if ai_model %}
-    <form hx-post="/boards/{{ board.slug }}/ai/ask" hx-target="#assistant-out" hx-swap="afterbegin" hx-indicator="#ai-spinner" class="stack" id="ask-form">
+    <form hx-post="/boards/{{ board_ref }}/ai/ask" hx-target="#assistant-out" hx-swap="afterbegin" hx-indicator="#ai-spinner" class="stack" id="ask-form">
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
       <input type="hidden" name="history" id="ai-history" value="[]">
       <textarea name="prompt" rows="3" placeholder="e.g. Break ‘Ship v2’ into subtasks, or: move everything about launch prep to next week" required></textarea>
@@ -67,7 +67,7 @@
         {% for label, text in quick_prompts %}<button type="button" class="chip" data-prompt="{{ text }}">{{ label }}</button>{% endfor %}
       </div>
     </form>
-    <p class="muted small">The assistant proposes changes; nothing is applied until you approve it. <a href="/boards/{{ board.slug }}/ai/history">History</a> · <a href="/settings/ai-providers">Manage providers</a></p>
+    <p class="muted small">The assistant proposes changes; nothing is applied until you approve it. <a href="/boards/{{ board_ref }}/ai/history">History</a> · <a href="/settings/ai-providers">Manage providers</a></p>
     {% else %}
     <p class="muted">Add your own API key for OpenAI, Anthropic, Gemini, Groq, OpenRouter… and the assistant can summarise, prioritise, split and schedule your tasks.</p>
     <a class="btn primary" href="/settings/ai-providers">Set up an AI provider</a>

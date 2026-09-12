@@ -2,7 +2,7 @@
   <div class="cs-q muted small">You: {{ prompt }}</div>
   <div class="cs-msg">{{ cs.assistant_message | replace('\n', '<br>') | safe }}</div>
   {% if ops %}
-  <form hx-post="/boards/{{ board.slug }}/ai/changesets/{{ cs.id }}/apply" hx-target="#cs-{{ cs.id }}" hx-swap="outerHTML" class="cs-ops">
+  <form hx-post="/boards/{{ board_ref }}/ai/changesets/{{ cs.id }}/apply" hx-target="#cs-{{ cs.id }}" hx-swap="outerHTML" class="cs-ops">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <ol>
     {% for op in ops %}
@@ -18,7 +18,7 @@
     {% if cs.status in ('proposed', 'partial') %}
     <div class="row">
       <button type="submit" class="btn primary">Apply selected</button>
-      <button type="button" class="danger" hx-post="/boards/{{ board.slug }}/ai/changesets/{{ cs.id }}/reject" hx-target="#cs-{{ cs.id }}" hx-swap="outerHTML" hx-include="closest form">Reject</button>
+      <button type="button" class="danger" hx-post="/boards/{{ board_ref }}/ai/changesets/{{ cs.id }}/reject" hx-target="#cs-{{ cs.id }}" hx-swap="outerHTML" hx-include="closest form">Reject</button>
     </div>
     {% else %}
     <div class="muted small">Status: <b>{{ cs.status }}</b>{% if result %} · applied {{ result.applied }}{% if result.skipped %}, skipped {{ result.skipped }}{% endif %}{% if result.errors %} · errors: {{ result.errors|join('; ') }}{% endif %}{% endif %}</div>

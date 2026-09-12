@@ -3,7 +3,7 @@
 {# One-line nudge: once we have enough reflections and the estimate looks trustworthy,
    a single click keeps the calibration learning without another questionnaire. #}
 <div class="reflectnudge">
-  <form hx-post="/boards/{{ board.slug }}/tasks/{{ reflect_task.id }}/reflect" hx-target="#reflect-slot" hx-swap="outerHTML" class="row">
+  <form hx-post="/boards/{{ board_ref }}/tasks/{{ reflect_task.id }}/reflect" hx-target="#reflect-slot" hx-swap="outerHTML" class="row">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     {% if reflect_actual_min %}
     {# the focus timer measured the real duration - record that rather than the estimate #}
@@ -15,13 +15,13 @@
     <button type="submit" name="quick" value="1" class="btn primary mini">Yes</button>
     {% endif %}
     {# inside the form, so htmx sends the hidden actual_min along and the full form is pre-filled #}
-    <button type="button" class="btn mini" hx-post="/boards/{{ board.slug }}/tasks/{{ reflect_task.id }}/reflect/full" hx-target="#reflect-slot" hx-swap="outerHTML">No, tell me more</button>
+    <button type="button" class="btn mini" hx-post="/boards/{{ board_ref }}/tasks/{{ reflect_task.id }}/reflect/full" hx-target="#reflect-slot" hx-swap="outerHTML">No, tell me more</button>
     <button type="submit" name="skip" value="1" class="btn mini" title="Dismiss (Esc)">✕</button>
   </form>
 </div>
 {% elif reflect_task %}
 <div class="focusmodal reflectmodal" style="display:flex">
-  <form class="focuscard reflectcard stack" hx-post="/boards/{{ board.slug }}/tasks/{{ reflect_task.id }}/reflect" hx-target="#reflect-slot" hx-swap="outerHTML">
+  <form class="focuscard reflectcard stack" hx-post="/boards/{{ board_ref }}/tasks/{{ reflect_task.id }}/reflect" hx-target="#reflect-slot" hx-swap="outerHTML">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <h3>Nice — “{{ reflect_task.title }}” is done ✔</h3>
     <p class="muted small">Four quick questions so the assistant learns how <i>you</i> work. Estimated {{ reflect_task.estimate_min }} min · planned energy {{ reflect_task.energy }}.</p>

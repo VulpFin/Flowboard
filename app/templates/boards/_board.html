@@ -1,4 +1,4 @@
-<section id="board" class="board" data-slug="{{ board.slug }}" {% if expand_task %}data-expand="{{ expand_task }}"{% endif %} hx-get="/boards/{{ board.slug }}/" hx-trigger="boardChanged from:body" hx-select="#board" hx-swap="outerHTML" hx-disinherit="hx-select hx-trigger">
+<section id="board" class="board" data-slug="{{ board.slug }}" {% if expand_task %}data-expand="{{ expand_task }}"{% endif %} hx-get="/boards/{{ board_ref }}/" hx-trigger="boardChanged from:body" hx-select="#board" hx-swap="outerHTML" hx-disinherit="hx-select hx-trigger">
   {% if ai_error %}<div class="flash bad">AI: {{ ai_error }}</div>{% endif %}
   <div class="stats muted small">
     {{ stats.open }} open · {{ stats.done }} done · {{ stats.overdue }} overdue · {{ stats.blocked }} blocked · {{ stats.minutes_open }} min estimated
@@ -6,7 +6,7 @@
       <button type="button" class="mini" data-cols="expand" title="Expand all columns">⊞ all</button>
       <button type="button" class="mini" data-cols="collapse" title="Collapse all columns">⊟ all</button>
       {% if can_edit %}
-      <form hx-post="/boards/{{ board.slug }}/schedule/auto" hx-target="#board" hx-swap="outerHTML" style="display:inline"><button class="mini" title="Give every unscheduled task a day without exceeding your daily limits (Settings → Schedule)">📅 Auto-schedule</button></form>
+      <form hx-post="/boards/{{ board_ref }}/schedule/auto" hx-target="#board" hx-swap="outerHTML" style="display:inline"><button class="mini" title="Give every unscheduled task a day without exceeding your daily limits (Settings → Schedule)">📅 Auto-schedule</button></form>
       {% endif %}
     </span>
   </div>
@@ -39,22 +39,22 @@
             <details class="instructions" open>
               <summary>How to do this <span class="muted small">(assistant)</span></summary>
               <div class="md">{{ t.instructions | md | safe }}</div>
-              {% if can_edit %}<form hx-post="/boards/{{ board.slug }}/tasks/{{ t.id }}/instructions/clear" hx-target="#board" hx-swap="outerHTML" style="display:inline"><button class="mini">Remove</button></form>{% endif %}
+              {% if can_edit %}<form hx-post="/boards/{{ board_ref }}/tasks/{{ t.id }}/instructions/clear" hx-target="#board" hx-swap="outerHTML" style="display:inline"><button class="mini">Remove</button></form>{% endif %}
             </details>
             {% endif %}
             {% if can_edit %}
             <div class="actions">
               <button type="button" class="focusbtn" data-id="{{ t.id }}" data-title="{{ t.title }}" data-est="{{ t.estimate_min }}" title="Start a focus timer">Focus</button>
-              <button type="button" hx-get="/boards/{{ board.slug }}/tasks/{{ t.id }}/edit" hx-target="closest .card" hx-swap="innerHTML" title="Edit">Edit</button>
-              <form hx-post="/boards/{{ board.slug }}/tasks/{{ t.id }}/instructions" hx-target="#board" hx-swap="outerHTML" hx-indicator="closest .card" style="display:inline"><button title="Ask the assistant for concrete step-by-step instructions (stored with the task)">{{ 'Redo steps' if t.instructions else 'How do I do this?' }}</button></form>
-              <form hx-post="/boards/{{ board.slug }}/tasks/{{ t.id }}/reeval" hx-target="#board" hx-swap="outerHTML" style="display:inline"><button title="AI re-evaluate fields & contexts">AI ↻</button></form>
-              <form hx-post="/boards/{{ board.slug }}/tasks/{{ t.id }}/schedule" hx-target="#board" hx-swap="outerHTML" style="display:inline" class="schedform">
+              <button type="button" hx-get="/boards/{{ board_ref }}/tasks/{{ t.id }}/edit" hx-target="closest .card" hx-swap="innerHTML" title="Edit">Edit</button>
+              <form hx-post="/boards/{{ board_ref }}/tasks/{{ t.id }}/instructions" hx-target="#board" hx-swap="outerHTML" hx-indicator="closest .card" style="display:inline"><button title="Ask the assistant for concrete step-by-step instructions (stored with the task)">{{ 'Redo steps' if t.instructions else 'How do I do this?' }}</button></form>
+              <form hx-post="/boards/{{ board_ref }}/tasks/{{ t.id }}/reeval" hx-target="#board" hx-swap="outerHTML" style="display:inline"><button title="AI re-evaluate fields & contexts">AI ↻</button></form>
+              <form hx-post="/boards/{{ board_ref }}/tasks/{{ t.id }}/schedule" hx-target="#board" hx-swap="outerHTML" style="display:inline" class="schedform">
                 <input type="date" name="scheduled_date" value="{{ t.scheduled_date.isoformat() if t.scheduled_date else '' }}" class="mini" title="Day to work on this">
                 <input type="time" name="scheduled_start" value="{{ t.scheduled_start or '' }}" class="mini" title="Time of day (optional; auto-schedule fills this from your energy curve)">
                 <button class="mini" title="Set the day">Set day</button>
               </form>
               {% if members and members|length > 1 %}
-              <form hx-post="/boards/{{ board.slug }}/tasks/{{ t.id }}/assign" hx-target="#board" hx-swap="outerHTML" style="display:inline" class="schedform">
+              <form hx-post="/boards/{{ board_ref }}/tasks/{{ t.id }}/assign" hx-target="#board" hx-swap="outerHTML" style="display:inline" class="schedform">
                 <select name="assigned_to_id" class="mini" title="Assign to a board member (scheduling uses their capacity)">
                   <option value="">unassigned</option>
                   {% for m in members %}<option value="{{ m.id }}" {% if t.assigned_to_id == m.id %}selected{% endif %}>{{ m.name }}</option>{% endfor %}
@@ -63,14 +63,14 @@
               </form>
               {% endif %}
               {% if t.due and connections %}
-              <form hx-post="/boards/{{ board.slug }}/tasks/{{ t.id }}/calendar" hx-target="#board" hx-swap="outerHTML" style="display:inline">
+              <form hx-post="/boards/{{ board_ref }}/tasks/{{ t.id }}/calendar" hx-target="#board" hx-swap="outerHTML" style="display:inline">
                 <select name="connection_id" title="Add to calendar" class="mini">{% for c in connections %}<option value="{{ c.id }}">{{ c.provider|capitalize }}{% if c.target_calendar_name %} · {{ c.target_calendar_name }}{% endif %}</option>{% endfor %}</select>
                 <button title="Create/update the event in the selected calendar">+ Calendar</button>
               </form>
               {% endif %}
-              <a class="btn-link" href="/boards/{{ board.slug }}/tasks/{{ t.id }}.ics" title="Download .ics for this task">.ics</a>
-              <form hx-post="/boards/{{ board.slug }}/tasks/{{ t.id }}/done" hx-target="#board" hx-swap="outerHTML" style="display:inline"><button class="primary">Done</button></form>
-              <form hx-delete="/boards/{{ board.slug }}/tasks/{{ t.id }}" hx-target="#board" hx-swap="outerHTML" hx-confirm="Delete “{{ t.title }}”?" style="display:inline"><button class="danger">Delete</button></form>
+              <a class="btn-link" href="/boards/{{ board_ref }}/tasks/{{ t.id }}.ics" title="Download .ics for this task">.ics</a>
+              <form hx-post="/boards/{{ board_ref }}/tasks/{{ t.id }}/done" hx-target="#board" hx-swap="outerHTML" style="display:inline"><button class="primary">Done</button></form>
+              <form hx-delete="/boards/{{ board_ref }}/tasks/{{ t.id }}" hx-target="#board" hx-swap="outerHTML" hx-confirm="Delete “{{ t.title }}”?" style="display:inline"><button class="danger">Delete</button></form>
             </div>
             {% endif %}
           </div>

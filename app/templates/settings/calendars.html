@@ -41,9 +41,9 @@
       <span class="tag ok">active</span> <span class="muted small">token {{ bf.feed.token_prefix }}… · created {{ bf.feed.created_at.strftime('%Y-%m-%d') }}{% if bf.feed.last_fetched_at %} · last fetched {{ bf.feed.last_fetched_at.strftime('%Y-%m-%d %H:%M') }}{% endif %}</span>
     {% else %}<span class="muted small">no feed</span>{% endif %}
     <div class="row">
-      <form hx-post="/boards/{{ bf.board.slug }}/feed/rotate" hx-target="#feed-{{ bf.board.id }}" hx-swap="outerHTML"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><label class="check"><input type="checkbox" name="include_done"> include completed</label> <button>{{ 'Rotate secret' if bf.feed and not bf.feed.revoked_at else 'Create feed' }}</button></form>
-      {% if bf.feed and not bf.feed.revoked_at %}<form method="post" action="/boards/{{ bf.board.slug }}/feed/revoke"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="danger">Revoke</button></form>{% endif %}
-      <a class="btn-link" href="/boards/{{ bf.board.slug }}/export.ics">Download .ics once</a>
+      <form hx-post="/boards/{{ ref_for(bf.board, user) }}/feed/rotate" hx-target="#feed-{{ bf.board.id }}" hx-swap="outerHTML"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><label class="check"><input type="checkbox" name="include_done"> include completed</label> <button>{{ 'Rotate secret' if bf.feed and not bf.feed.revoked_at else 'Create feed' }}</button></form>
+      {% if bf.feed and not bf.feed.revoked_at %}<form method="post" action="/boards/{{ ref_for(bf.board, user) }}/feed/revoke"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="danger">Revoke</button></form>{% endif %}
+      <a class="btn-link" href="/boards/{{ ref_for(bf.board, user) }}/export.ics">Download .ics once</a>
     </div>
   </div>
   {% endfor %}

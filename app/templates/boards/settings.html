@@ -5,12 +5,12 @@
 <div class="grid2">
 <section class="panel">
   <h3>General</h3>
-  <form method="post" action="/boards/{{ board.slug }}/settings" class="stack">
+  <form method="post" action="/boards/{{ board_ref }}/settings" class="stack">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <label>Name <input name="name" value="{{ board.name }}" required></label>
     <label>Description <input name="description" value="{{ board.description }}"></label>
     <div class="row"><label>Icon <input name="icon" value="{{ board.icon }}" size="6"></label> <label>Colour <input name="color" type="color" value="{{ board.color or '#5cdfb7' }}"></label></div>
-    <label class="check"><input type="checkbox" name="regenerate_slug" value="1"> Regenerate URL slug from name (current: <code>/boards/{{ board.slug }}/</code>)</label>
+    <label class="check"><input type="checkbox" name="regenerate_slug" value="1"> Regenerate URL slug from name (current: <code>/boards/{{ board_ref }}/</code>)</label>
     <label>AI model for this board (overrides your account default)
       <select name="ai_model" class="modelselect">
         <option value="">Use account default</option>
@@ -22,19 +22,67 @@
   </form>
 </section>
 <section class="panel">
-  <h3>Members</h3>
-  <table class="table"><tr><th>User</th><th>Role</th></tr>{% for m in members %}<tr><td>{{ m.user_id[:8] }}{% if m.user_id == user.id %} (you){% endif %}</td><td>{{ m.role }}</td></tr>{% endfor %}</table>
-  <p class="muted small">Shared boards (invite editors/viewers) are coming; the membership model is already in place.</p>
+  <h3>Members <span class="muted small">{{ members|length }}</span></h3>
+  <div class="tablewrap">
+  <table class="table">
+    <tr><th>Member</th><th>Role</th><th></th></tr>
+    {% for m in members %}
+    <tr>
+      <td><b>{{ m.name }}</b>{% if m.id == user.id %} <span class="muted small">(you)</span>{% endif %}<br><span class="muted small">{{ m.email }}</span></td>
+      <td>
+        {% if m.is_owner %}<span class="tag">owner</span>
+        {% else %}
+        <form method="post" action="/boards/{{ board_ref }}/members/{{ m.id }}/role" class="row">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <select name="role" class="mini">{% for r in roles %}<option value="{{ r }}" {% if m.role == r %}selected{% endif %}>{{ r }}</option>{% endfor %}</select>
+          <button class="mini">Save</button>
+        </form>
+        {% endif %}
+      </td>
+      <td>{% if not m.is_owner %}
+        <form method="post" action="/boards/{{ board_ref }}/members/{{ m.id }}/remove" onsubmit="return confirm('Remove {{ m.name }} from this board? Tasks assigned to them here become unassigned.')">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="mini danger">Remove</button>
+        </form>
+      {% endif %}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  </div>
+
+  <h4>Invite someone</h4>
+  <form method="post" action="/boards/{{ board_ref }}/members/invite" class="stack">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <div class="row wrapcols">
+      <input name="email" type="email" placeholder="their@email.address" required>
+      <select name="role" title="What they may do">{% for r in roles %}<option value="{{ r }}" {% if r == 'editor' %}selected{% endif %}>{{ r }}</option>{% endfor %}</select>
+      <button type="submit" class="btn primary">Send invitation</button>
+    </div>
+    <input name="message" maxlength="500" placeholder="Optional note for the email">
+  </form>
+  <p class="muted small">They do not need an account yet — the emailed link works for 14 days, only for that address, and only once. <b>viewer</b> reads, <b>editor</b> adds and changes tasks, <b>admin</b> can also invite and manage members. Assigning a task to a member schedules it against <i>their</i> work schedule and calendar.</p>
+
+  {% if invites %}
+  <h4>Pending invitations</h4>
+  <ul class="plain">
+    {% for i in invites %}
+    <li class="row">
+      <span>{{ i.email }} <span class="tag">{{ i.role }}</span> <span class="muted small">sent {{ i.created_at.strftime('%Y-%m-%d') }} · expires {{ i.expires_at.strftime('%Y-%m-%d') }}</span></span>
+      <form method="post" action="/boards/{{ board_ref }}/invites/{{ i.id }}/revoke"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="mini">Revoke</button></form>
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+
   <h3>Calendar feed</h3>
   {% if feed and not feed.revoked_at %}<p class="muted small">A subscription feed exists (prefix <code>{{ feed.token_prefix }}…</code>). Manage it in <a href="/settings/calendars">Calendars</a>.</p>{% else %}<p class="muted small">No feed. Create one in <a href="/settings/calendars">Calendars</a>.</p>{% endif %}
   <h3>Danger zone</h3>
-  <form method="post" action="/boards/{{ board.slug }}/archive" style="display:inline"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button>{{ 'Restore' if board.is_archived else 'Archive' }} board</button></form>
-  <form method="post" action="/boards/{{ board.slug }}/delete" class="row" onsubmit="return confirm('Delete this board and ALL its tasks? This cannot be undone.')">
+  <form method="post" action="/boards/{{ board_ref }}/archive" style="display:inline"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button>{{ 'Restore' if board.is_archived else 'Archive' }} board</button></form>
+  <form method="post" action="/boards/{{ board_ref }}/delete" class="row" onsubmit="return confirm('Delete this board and ALL its tasks? This cannot be undone.')">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <input name="confirm" placeholder="type {{ board.slug }} to confirm">
     <button class="danger">Delete board</button>
   </form>
-  <form hx-post="/boards/{{ board.slug }}/tasks/clear" hx-confirm="Delete ALL tasks on this board (including completed)?" hx-target="#void" style="margin-top:.5rem"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="danger">Clear all tasks</button></form>
+  <form hx-post="/boards/{{ board_ref }}/tasks/clear" hx-confirm="Delete ALL tasks on this board (including completed)?" hx-target="#void" style="margin-top:.5rem"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="danger">Clear all tasks</button></form>
   <div id="void" hidden></div>
 </section>
 </div>

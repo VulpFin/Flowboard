@@ -36,6 +36,20 @@ def send_mail(to: str, subject: str, body: str) -> bool:
         return False
 
 
+def send_board_invite(to: str, *, board, inviter: User, url: str, role: str, message: str = "") -> bool:
+    who = inviter.display_name or inviter.username
+    note = f"\n{who} says:\n\n  {message}\n" if message else ""
+    return send_mail(
+        to,
+        f"{settings.FLOWBOARD_SITE_NAME}: {who} invited you to “{board.name}”",
+        f"{who} ({inviter.email}) invited you to join the board “{board.name}” on "
+        f"{settings.FLOWBOARD_SITE_NAME} as {role}.\n{note}\n"
+        f"Open this link to accept or decline:\n\n{url}\n\n"
+        f"The link works for 14 days and only for this email address. "
+        f"If you did not expect this invitation you can ignore it.\n",
+    )
+
+
 def send_password_reset(user: User, link: str) -> bool:
     return send_mail(
         user.email,

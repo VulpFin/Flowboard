@@ -26,6 +26,15 @@ templates = Jinja2Templates(directory=TEMPLATES_DIR)
 from .mdlite import md_lite  # noqa: E402
 
 templates.env.filters["md"] = md_lite
+
+
+def _ref_for(board, user):
+    from ..services.boards import ref_for
+
+    return ref_for(board, user)
+
+
+templates.env.globals["ref_for"] = _ref_for  # {{ ref_for(b, user) }} in board lists
 templates.env.globals.update(site_name=settings.FLOWBOARD_SITE_NAME, site_url=settings.FLOWBOARD_SITE_URL, app_version=__version__, oidc_enabled=settings.oidc_configured, tg11_issuer=settings.TG11_OIDC_ISSUER.rstrip('/'), oidc_label=settings.TG11_OIDC_LOGIN_LABEL, local_login_enabled=settings.TG11_LOCAL_LOGIN_ENABLED, registration_enabled=settings.FLOWBOARD_ALLOW_REGISTRATION)
 
 _signer = URLSafeTimedSerializer(settings.FLOWBOARD_SECRET_KEY, salt="fb-session")
@@ -170,12 +179,21 @@ def render(request: Request, template: str, ctx: Optional[dict] = None, status_c
     """Template rendering with the common context (user, boards, csrf)."""
     from datetime import date as _date
 
+    from ..services.boards import ref_for
+
     context = {"request": request, "csrf_token": csrf_token_for(request), "today": _date.today()}
     user = getattr(request.state, "user", None)
     context["user"] = user
     if user is not None and db is not None:
         context["boards"] = list_boards_for_user(db, user)
-    context["board"] = getattr(request.state, "board", None)
+        from ..services.invites import pending_count
+
+        context["pending_invites"] = pending_count(db, user)
+    board = getattr(request.state, "board", None)
+    context["board"] = board
+    # every board link must use the reference *this* user should follow: your own
+    # boards keep their slug, someone else's board is "<owner>~<slug>"
+    context["board_ref"] = ref_for(board, user) if board is not None else ""
     context["msg"] = request.query_params.get("msg")
     context["err"] = request.query_params.get("err")
     context.update(ctx or {})

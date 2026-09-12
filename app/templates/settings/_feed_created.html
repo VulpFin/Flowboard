@@ -4,5 +4,5 @@
   <label>Subscribe URL (https) <input readonly value="{{ url }}" onclick="this.select()"></label>
   <label>webcal:// (Apple Calendar / Outlook “Add from Internet”) <input readonly value="{{ webcal }}" onclick="this.select()"></label>
   <p class="muted small">Google Calendar: Other calendars → From URL → paste the https URL. Apple: File → New Calendar Subscription. Outlook: Add calendar → Subscribe from web.</p>
-  <form method="post" action="/boards/{{ board.slug }}/feed/revoke"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="danger">Revoke</button></form>
+  <form method="post" action="/boards/{{ board_ref }}/feed/revoke"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="danger">Revoke</button></form>
 </div>

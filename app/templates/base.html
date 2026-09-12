@@ -16,7 +16,7 @@
       <form class="boardswitch" method="get" onsubmit="return false">
         <select onchange="if(this.value) window.location.href='/boards/'+this.value+'/'" title="Switch board">
           {% for b in boards %}
-          <option value="{{ b.slug }}" {% if board and b.id == board.id %}selected{% endif %}>{{ b.icon }} {{ b.name }}</option>
+          <option value="{{ ref_for(b, user) }}" {% if board and b.id == board.id %}selected{% endif %}>{{ b.icon }} {{ b.name }}{% if b.owner_id != user.id %} · {{ b.owner.username }}{% endif %}</option>
           {% endfor %}
         </select>
         <a class="linkbtn" href="/boards" title="All boards">Boards</a>
@@ -26,6 +26,7 @@
       <div class="topextra">
         {% block topbar %}{% endblock %}
         <nav class="usernav">
+          {% if pending_invites %}<a class="linkbtn invites" href="/invites" title="You have board invitations waiting">✉ {{ pending_invites }}</a>{% endif %}
           <a class="linkbtn" href="/settings/ai-providers" title="AI providers">AI</a>
           <a class="linkbtn" href="/settings/account" title="Settings">Settings</a>
           <form method="post" action="/logout" style="display:inline"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="linkbtn" type="submit" title="Sign out {{ user.username }}">Sign out</button></form>
