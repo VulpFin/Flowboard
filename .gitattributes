@@ -1,0 +1,4 @@
+# Shell scripts and unit files must keep LF endings: CRLF breaks deploy.sh on the server.
+*.sh text eol=lf
+*.service text eol=lf
+*.timer text eol=lf
