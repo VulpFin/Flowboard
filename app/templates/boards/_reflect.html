@@ -5,8 +5,16 @@
 <div class="reflectnudge">
   <form hx-post="/boards/{{ board.slug }}/tasks/{{ reflect_task.id }}/reflect" hx-target="#reflect-slot" hx-swap="outerHTML" class="row">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    {% if reflect_actual_min %}
+    {# the focus timer measured the real duration - record that rather than the estimate #}
+    <input type="hidden" name="actual_min" value="{{ reflect_actual_min }}">
+    <span>“{{ reflect_task.title }}” done — you focused for {{ reflect_actual_min }} min (estimated {{ reflect_task.estimate_min }}). Record that?</span>
+    <button type="submit" name="quick" value="1" class="btn primary mini">Yes, {{ reflect_actual_min }} min</button>
+    {% else %}
     <span>“{{ reflect_task.title }}” done — took about as long as planned ({{ reflect_task.estimate_min }} min)?</span>
     <button type="submit" name="quick" value="1" class="btn primary mini">Yes</button>
+    {% endif %}
+    {# inside the form, so htmx sends the hidden actual_min along and the full form is pre-filled #}
     <button type="button" class="btn mini" hx-post="/boards/{{ board.slug }}/tasks/{{ reflect_task.id }}/reflect/full" hx-target="#reflect-slot" hx-swap="outerHTML">No, tell me more</button>
     <button type="submit" name="skip" value="1" class="btn mini" title="Dismiss (Esc)">✕</button>
   </form>

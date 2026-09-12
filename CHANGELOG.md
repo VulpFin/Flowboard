@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.2.1 — 2026-09-12
+
+* The focus timer and the reflection nudge now agree: when the timer measured the real duration, the one-click nudge records *those* minutes ("you focused for 52 min — record that?") instead of the estimate, and *No, tell me more* carries the measured value into the full form.
+* Mobile: the nudge puts its question on its own line so the three buttons fit side by side.
+* `.gitattributes` keeps `*.sh`, `*.service` and `*.timer` LF-only — CRLF endings on `deploy/deploy.sh` made the 2.2.0 deploy abort at `set -o pipefail`.
+
 ## 2.2.0 — 2026-09-12
 
 * **Reflection nudges.** After 10 reflections the full questionnaire only opens when the answer is likely to matter — the context is off by more than 30%, the task carried AI instructions, or it was ≥ 90 minutes. Otherwise a one-line prompt asks *"took about as long as planned?"*; **Yes** records a reflection with `actual_min = estimate` in one click, **No, tell me more** opens the full form. Settings → Schedule & Calibration → *Always ask the full questions* restores the old behaviour.

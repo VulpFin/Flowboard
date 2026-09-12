@@ -111,6 +111,24 @@ def test_nudge_endpoints(client, db, alice):
 # 2. focus timer -> reflection
 # --------------------------------------------------------------------------
 
+def test_focus_timer_nudge_records_the_measured_minutes(client, db, alice):
+    """A calibrated user gets the nudge, but when the focus timer measured the real
+    duration the single click must record *that*, not the estimate."""
+    board = _board(db, alice)
+    _reflect_many(db, alice, board, reflections.NUDGE_AFTER, estimate=30, actual=30, context="Email")
+    db.commit()
+    client.login("alice@example.com")
+    r = client.post("/boards/personal/tasks", data={"title": "Focus then nudge", "estimate_min": "30"}, headers={"HX-Request": "true"})
+    tid = re.findall(r'data-task="([0-9a-f-]{36})"', r.text)[-1]
+    r = client.post(f"/boards/personal/tasks/{tid}/done", data={"actual_min": "52"}, headers={"HX-Request": "true"})
+    assert "reflectnudge" in r.text and "you focused for 52 min" in r.text
+    client.post(f"/boards/personal/tasks/{tid}/reflect", data={"quick": "1", "actual_min": "52"}, headers={"HX-Request": "true"})
+    db.expire_all()
+    assert reflections.list_for_user(db, alice, limit=1)[0].actual_min == 52
+    # and "No, tell me more" carries the measured value into the full form
+    r = client.post(f"/boards/personal/tasks/{tid}/reflect/full", data={"actual_min": "52"}, headers={"HX-Request": "true"})
+    assert "reflectmodal" in r.text and 'value="52"' in r.text
+
 def test_focus_timer_marks_done_and_prefills_actual_minutes(client, db, alice):
     client.login("alice@example.com")
     r = client.post("/boards/personal/tasks", data={"title": "Focus me", "estimate_min": "30"}, headers={"HX-Request": "true"})

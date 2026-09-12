@@ -111,7 +111,9 @@ def reflect(request: Request, task_id: str, actual_min: Optional[str] = Form(Non
     t = task_service.get_task(db, board, task_id)
     if t is not None and not skip:
         if quick:
-            reflection_service.record(db, user, board, t, actual_min=t.estimate_min, actual_energy=t.energy, clarity=None, difficulty=None, notes="")
+            # the focus timer passes the minutes it measured; otherwise "as planned"
+            measured = _int_or_none(actual_min)
+            reflection_service.record(db, user, board, t, actual_min=measured if measured and 1 <= measured <= 1440 else t.estimate_min, actual_energy=t.energy, clarity=None, difficulty=None, notes="")
         else:
             reflection_service.record(db, user, board, t, actual_min=_int_or_none(actual_min), actual_energy=actual_energy or None, clarity=_int_or_none(clarity), difficulty=_int_or_none(difficulty), notes=notes)
     return deps.render(request, "boards/_reflect.html", {"reflect_task": None, "thanks": not skip and t is not None})

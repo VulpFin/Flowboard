@@ -197,6 +197,9 @@ button.mini, input.mini, select.mini { font-size: .78rem; padding: .15rem .45rem
   .reflectcard { width: 96vw; max-width: none; max-height: 88vh; overflow-y: auto; }
   .reflectmodal { align-items: flex-end; }
   .reflectnudge { left: .5rem; right: .5rem; bottom: .5rem; max-width: none; }
+  .reflectnudge span { flex: 1 1 100%; }              /* question on its own line… */
+  .reflectnudge .btn { min-height: 40px; flex: 1 1 auto; }  /* …buttons share the next one */
+  .reflectnudge .btn:last-child { flex: 0 0 auto; }
   .flash.autohide { left: .5rem; right: .5rem; }
   .weekgrid { grid-template-columns: 1fr; }
   .taskform input, .taskform select { flex: 1 1 100%; }
