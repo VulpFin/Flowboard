@@ -24,7 +24,7 @@
             <span class="caret small">▸</span>
             <span class="title">{{ t.title }}{% if t.ai_generated %} <span class="tag" title="Created by the assistant">AI</span>{% endif %}{% if t.instructions %} <span class="tag" title="Has step-by-step instructions">📝</span>{% endif %}</span>
             <span class="meta small" title="Estimate · Importance · Due · Energy">
-              {{ t.estimate_min }}m · imp {{ t.importance }} · {{ t.energy }}{% if t.due %} · due {{ t.due }}{% endif %}{% if t.scheduled_date %} · <span class="tag {% if t.scheduled_date < today %}bad{% endif %}" title="Scheduled day{% if t.rollover_count %} (rolled over {{ t.rollover_count }}×){% endif %}">{{ t.scheduled_date.strftime('%a %d') }}{% if t.rollover_count %} ↻{{ t.rollover_count }}{% endif %}</span>{% endif %}
+              {{ t.estimate_min }}m · imp {{ t.importance }} · {{ t.energy }}{% if t.due %} · due {{ t.due }}{% endif %}{% if t.scheduled_date %} · <span class="tag {% if t.scheduled_date < today %}bad{% endif %}" title="Scheduled day{% if t.scheduled_start %} at {{ t.scheduled_start }}{% endif %}{% if t.rollover_count %} (rolled over {{ t.rollover_count }}×){% endif %}">{{ t.scheduled_date.strftime('%a %d') }}{% if t.scheduled_start %} {{ t.scheduled_start }}{% endif %}{% if t.rollover_count %} ↻{{ t.rollover_count }}{% endif %}</span>{% endif %}{% if t.assigned_to_id and member_names.get(t.assigned_to_id) %} · <span class="tag" title="Assigned to">👤 {{ member_names[t.assigned_to_id] }}</span>{% endif %}
               {% if t.status == 'blocked' %} · <b>blocked</b>{% endif %}
             </span>
           </div>
@@ -50,8 +50,18 @@
               <form hx-post="/boards/{{ board.slug }}/tasks/{{ t.id }}/reeval" hx-target="#board" hx-swap="outerHTML" style="display:inline"><button title="AI re-evaluate fields & contexts">AI ↻</button></form>
               <form hx-post="/boards/{{ board.slug }}/tasks/{{ t.id }}/schedule" hx-target="#board" hx-swap="outerHTML" style="display:inline" class="schedform">
                 <input type="date" name="scheduled_date" value="{{ t.scheduled_date.isoformat() if t.scheduled_date else '' }}" class="mini" title="Day to work on this">
+                <input type="time" name="scheduled_start" value="{{ t.scheduled_start or '' }}" class="mini" title="Time of day (optional; auto-schedule fills this from your energy curve)">
                 <button class="mini" title="Set the day">Set day</button>
               </form>
+              {% if members and members|length > 1 %}
+              <form hx-post="/boards/{{ board.slug }}/tasks/{{ t.id }}/assign" hx-target="#board" hx-swap="outerHTML" style="display:inline" class="schedform">
+                <select name="assigned_to_id" class="mini" title="Assign to a board member (scheduling uses their capacity)">
+                  <option value="">unassigned</option>
+                  {% for m in members %}<option value="{{ m.id }}" {% if t.assigned_to_id == m.id %}selected{% endif %}>{{ m.name }}</option>{% endfor %}
+                </select>
+                <button class="mini" title="Assign">Assign</button>
+              </form>
+              {% endif %}
               {% if t.due and connections %}
               <form hx-post="/boards/{{ board.slug }}/tasks/{{ t.id }}/calendar" hx-target="#board" hx-swap="outerHTML" style="display:inline">
                 <select name="connection_id" title="Add to calendar" class="mini">{% for c in connections %}<option value="{{ c.id }}">{{ c.provider|capitalize }}{% if c.target_calendar_name %} · {{ c.target_calendar_name }}{% endif %}</option>{% endfor %}</select>

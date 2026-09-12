@@ -40,6 +40,8 @@ TASK_FIELDS_SCHEMA = {
         "status": {"type": "string", "enum": ["open", "blocked"]},
         "tags": {"type": "array", "items": {"type": "string"}},
         "scheduled_date": {"type": ["string", "null"], "description": "YYYY-MM-DD day the task should be worked on (respect the user's daily capacity), null to unschedule"},
+        "scheduled_start": {"type": ["string", "null"], "description": "HH:MM start time inside that day; put high-energy work in the user's high-energy blocks"},
+        "assigned_to_id": {"type": ["string", "null"], "description": "id of the board member who should do this (only ids listed in the members block), null to unassign"},
     },
 }
 
@@ -75,6 +77,8 @@ Rules:
 - Contexts are short setup labels (Excel, Email, Coding, Docs, Slides, Calls, Errand, Design, Meetings, Lab, Office, General...). Keep existing contexts unless asked.
 - Estimates are minutes (5-1440). Importance 1-5 (5 critical). Energy low/medium/high.
 - `scheduled_date` is the day the user plans to *work on* a task (distinct from `due`). When scheduling, never exceed the daily capacity given in the work-schedule block; spill extra work to the next free day.
+- `scheduled_start` (HH:MM) is the slot inside that day. Respect the energy curve: high-energy tasks belong in high-energy blocks, and never place work on top of the meeting minutes reported for that day.
+- On a shared board you may set `assigned_to_id` to one of the member ids listed in the members block; schedule that task against *that* member's free minutes.
 - If a calibration block is present, apply it: scale estimates by the user's real time ratio, and be more concrete when their clarity ratings are low.
 - If the request is ambiguous, ask a clarifying question in `message` and return no operations.
 - `message` should be concise Markdown. When you return operations, summarise them in `message` too.
@@ -106,6 +110,10 @@ def serialise_board(tasks: List[Task], include_done: bool = False, limit: int = 
             row["done"] = True
         if t.scheduled_date:
             row["scheduled"] = t.scheduled_date.isoformat()
+        if t.scheduled_start:
+            row["at"] = t.scheduled_start
+        if t.assigned_to_id:
+            row["assigned_to_id"] = t.assigned_to_id
         if t.instructions:
             row["has_instructions"] = True
         if t.is_overdue:
@@ -116,8 +124,9 @@ def serialise_board(tasks: List[Task], include_done: bool = False, limit: int = 
     return json.dumps(rows, ensure_ascii=False)
 
 
-def user_context_block(user: Optional[User], tasks: List[Task]) -> str:
-    """Calibration profile + work schedule for this user (empty if unknown)."""
+def user_context_block(user: Optional[User], tasks: List[Task], *, db: Optional[Session] = None, board: Optional[Board] = None) -> str:
+    """Calibration profile + work schedule (+ energy curve, meetings and, on a
+    shared board, each member's free minutes) for this user.  Empty if unknown."""
     if user is None:
         return ""
     from ..services import reflections, schedule
@@ -127,18 +136,18 @@ def user_context_block(user: Optional[User], tasks: List[Task]) -> str:
     if cal:
         parts.append(cal)
     try:
-        parts.append(schedule.schedule_summary_for_ai(user, tasks))
+        parts.append(schedule.schedule_summary_for_ai(user, tasks, db=db, board=board))
     except Exception:
         pass
     return "\n\n".join(parts)
 
 
-def build_messages(board: Board, tasks: List[Task], request_text: str, history: Optional[List[Dict[str, str]]] = None, include_done: bool = False, user: Optional[User] = None) -> List[ChatMessage]:
+def build_messages(board: Board, tasks: List[Task], request_text: str, history: Optional[List[Dict[str, str]]] = None, include_done: bool = False, user: Optional[User] = None, db: Optional[Session] = None) -> List[ChatMessage]:
     now = datetime.now()
     msgs = [ChatMessage(role="system", content=SYSTEM_PROMPT.format(today=now.strftime("%Y-%m-%d"), weekday=now.strftime("%A")))]
     stats = task_service.board_stats(tasks)
     msgs.append(ChatMessage(role="system", content=f"Board: {board.name}. {board.description or ''}\nStats: {json.dumps(stats)}\nTasks (JSON): {serialise_board(tasks, include_done)}"))
-    ctx = user_context_block(user, tasks)
+    ctx = user_context_block(user, tasks, db=db, board=board)
     if ctx:
         msgs.append(ChatMessage(role="system", content=ctx))
     for h in history or []:
@@ -148,7 +157,7 @@ def build_messages(board: Board, tasks: List[Task], request_text: str, history: 
     return msgs
 
 
-def _validate_operations(ops: List[Dict[str, Any]], known_ids: Dict[str, Task]) -> List[Dict[str, Any]]:
+def _validate_operations(ops: List[Dict[str, Any]], known_ids: Dict[str, Task], member_ids: Optional[set] = None) -> List[Dict[str, Any]]:
     """Drop operations that reference unknown tasks / are malformed; normalise."""
     cleaned: List[Dict[str, Any]] = []
     temp_ids: set = set()
@@ -156,6 +165,10 @@ def _validate_operations(ops: List[Dict[str, Any]], known_ids: Dict[str, Task]) 
         if not isinstance(raw, dict) or raw.get("op") not in OPERATIONS:
             continue
         op = {"op": raw["op"], "reason": str(raw.get("reason") or "")[:300], "fields": dict(raw.get("fields") or {})}
+        if "assigned_to_id" in op["fields"]:
+            val = op["fields"]["assigned_to_id"]
+            if val and str(val) not in (member_ids or set()):
+                op["fields"].pop("assigned_to_id")  # never assign to someone who is not a member
         if op["op"] == "create_task":
             if not (op["fields"].get("title") or "").strip():
                 continue
@@ -197,13 +210,13 @@ def propose(db: Session, user: User, board: Board, request_text: str, *, model_r
     known = {t.id: t for t in tasks}
     client = AIClient(db, user, board, model_ref)
     data = client.structured(
-        build_messages(board, tasks, request_text, history, user=user),
+        build_messages(board, tasks, request_text, history, user=user, db=db),
         schema=PROPOSAL_SCHEMA,
         name="propose_changes",
         description="Answer the user and propose zero or more board operations for review.",
         operation="assistant",
     )
-    ops = _validate_operations(data.get("operations") or [], known)
+    ops = _validate_operations(data.get("operations") or [], known, {m.user_id for m in board.memberships})
     cs = AIChangeSet(
         board_id=board.id,
         user_id=user.id,

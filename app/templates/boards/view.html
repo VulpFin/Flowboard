@@ -23,7 +23,8 @@
 <div class="maincol">
 {% if can_edit %}
 <section class="new-task panel">
-  <h3>Add task</h3>
+  <details id="addtask" open>
+  <summary><h3 style="display:inline">Add task</h3></summary>
   <form hx-post="/boards/{{ board.slug }}/tasks" hx-target="#board" hx-swap="outerHTML" class="taskform">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <input name="title" placeholder="Title" required />
@@ -40,6 +41,7 @@
     <button type="submit" class="btn primary">Add</button>
   </form>
   {% if not ai_model %}<p class="muted small">AI features are off until you <a href="/settings/ai-providers">add an AI provider</a>.</p>{% endif %}
+  </details>
 </section>
 {% endif %}
 

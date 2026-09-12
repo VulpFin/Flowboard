@@ -5,6 +5,7 @@
     python -m app.cli create-user  --email ... --username ... [--password ...] [--staff]
     python -m app.cli import-legacy --file flowboard_tasks.json --user <email> [--board "Personal"]
     python -m app.cli rotate-credential-keys
+    python -m app.cli send-digests [--user a@b.c] [--force] [--dry-run] [--no-ai]
     python -m app.cli gen-keys
     python -m app.cli check
 
@@ -135,6 +136,28 @@ def cmd_import_legacy(args) -> int:
     return 0
 
 
+def cmd_send_digests(args) -> int:
+    """Morning digests.  Run every 15 minutes by a systemd timer; only users
+    whose local time has just passed their chosen hour get one."""
+    from .db import session_scope
+    from .services import digest
+
+    sent = failed = 0
+    with session_scope() as db:
+        results = digest.send_all(db, force=bool(args.force), dry_run=bool(args.dry_run), only_email=args.user, use_ai=not args.no_ai)
+    for r in results:
+        if r["status"] == "sent":
+            sent += 1
+        elif r["status"] in ("failed", "no-such-user"):
+            failed += 1
+        if args.verbose or args.dry_run or r["status"] not in ("not-due",):
+            print(f"{r['user']}: {r['status']}" + (f" [{r.get('source')}]" if r.get("source") else ""))
+        if args.dry_run and r.get("body"):
+            print(f"--- {r['subject']} ---\n{r['body']}\n---")
+    print(f"digests: {sent} sent, {failed} failed, {len(results)} considered")
+    return 1 if failed else 0
+
+
 def cmd_rotate(_args) -> int:
     from sqlalchemy import select
     from .db import session_scope
@@ -175,6 +198,13 @@ def main(argv=None) -> int:
     il.add_argument("--user", required=True, help="email or username of the owner")
     il.add_argument("--board", help="board name/slug (default: the user's default board)")
     il.set_defaults(fn=cmd_import_legacy)
+    sd = sub.add_parser("send-digests", help="send the morning digest to every user whose local time just passed their chosen hour")
+    sd.add_argument("--user", help="only this email address")
+    sd.add_argument("--force", action="store_true", help="ignore the hour and the already-sent-today flag")
+    sd.add_argument("--dry-run", action="store_true", dest="dry_run", help="print the digest instead of sending it")
+    sd.add_argument("--no-ai", action="store_true", dest="no_ai", help="always build the plain digest")
+    sd.add_argument("-v", "--verbose", action="store_true")
+    sd.set_defaults(fn=cmd_send_digests)
     sub.add_parser("rotate-credential-keys").set_defaults(fn=cmd_rotate)
     args = p.parse_args(argv)
     return args.fn(args)

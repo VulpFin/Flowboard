@@ -65,11 +65,13 @@ def board_view(request: Request, board: Board = Depends(deps.current_board), use
     columns = task_service.as_columns(tasks)
     all_tasks = task_service.list_tasks(db, board, include_done=True)
     model = resolve_model(db, user, board)
+    members = board_service.member_list(db, board)
     return deps.render(request, "boards/view.html", {
         "columns": columns, "stats": task_service.board_stats(all_tasks), "ai_model": model.ref if model else None,
         "quick_prompts": QUICK_PROMPTS, "can_edit": membership.role_enum.can_edit if membership else False,
         "cal_links": cal_links.links_for_board(db, board), "connections": cal_links.list_connections(db, user),
         "board_settings": board_service.board_settings(board),
+        "members": members, "member_names": {m["id"]: m["name"] for m in members},
     }, db=db)
 
 
@@ -139,10 +141,18 @@ def board_schedule(request: Request, start: Optional[str] = None, days: int = 7,
     plan = schedule_service.day_plan(db, user, all_boards, start_d, days)
     unscheduled = [t for t in task_service.list_tasks(db, board, include_done=False) if not t.scheduled_date]
     board_names = {b.id: b for b in all_boards}
+    members = board_service.member_list(db, board)
+    # shared board: how much room each member has, in minutes only - never their
+    # other boards' task titles
+    team = []
+    if len(members) > 1:
+        for m in members:
+            team.append({"name": m["name"], "role": m["role"], "id": m["id"], "days": schedule_service.free_minutes_by_day(db, m["user"], start_d, min(days, 7))})
     return deps.render(request, "boards/schedule.html", {
         "plan": plan, "unscheduled": unscheduled, "start": start_d, "days": days, "can_edit": can_edit, "board_names": board_names,
         "prev": (start_d - timedelta(days=days)).isoformat(), "next": (start_d + timedelta(days=days)).isoformat(), "today": date.today(),
         "sched": schedule_service.load_schedule(user), "weekdays": schedule_service.WEEKDAYS,
+        "members": members, "member_names": {m["id"]: m["name"] for m in members}, "team": team,
     }, db=db)
 
 

@@ -25,18 +25,20 @@
   <div class="daycol {% if not cap.enabled %}off{% endif %} {% if cap.day == today %}istoday{% endif %} {% if cap.used_min > cap.max_min and cap.enabled %}over{% endif %}">
     <h3>{{ weekdays[cap.day.weekday()][:3] }} <span class="muted small">{{ cap.day.strftime('%b %d') }}</span></h3>
     {% if cap.enabled %}
-    <div class="capbar" title="{{ cap.used_min }} of {{ cap.max_min }} min planned"><span style="width:{{ [100, (cap.used_min * 100 / cap.max_min) if cap.max_min else 100]|min }}%"></span></div>
-    <div class="muted small">{{ cap.start }}–{{ cap.end }} · {{ cap.used_min }}/{{ cap.max_min }} min{% if cap.used_high_min %} · {{ cap.used_high_min }}/{{ cap.max_high_min }} high{% endif %}</div>
+    <div class="capbar" title="{{ cap.used_min }} of {{ cap.available_min }} min planned"><span style="width:{{ [100, (cap.used_min * 100 / cap.available_min) if cap.available_min else 100]|min }}%"></span></div>
+    <div class="muted small">{{ cap.start }}–{{ cap.end }} · {{ cap.used_min }}/{{ cap.available_min }} min{% if cap.busy_min %} · <span class="tag" title="{{ cap.busy_min }} minutes are already taken by events in your connected calendar">− {{ cap.busy_min }} min meetings</span>{% endif %}{% if cap.used_high_min %} · {{ cap.used_high_min }}/{{ cap.max_high_min }} high{% endif %}</div>
     {% else %}<div class="muted small">day off</div>{% endif %}
     <ul class="plain">
     {% for t in tasks %}
       <li class="schedtask {% if t.board_id != board.id %}other{% endif %} {% if t.energy == 'high' %}high{% endif %}">
-        <div><b>{{ t.title }}</b> <span class="muted small">{{ t.estimate_min }}m · {{ t.energy }}{% if t.due %} · due {{ t.due }}{% endif %}{% if t.rollover_count %} · ↻{{ t.rollover_count }}{% endif %}</span></div>
+        <div>{% if t.scheduled_start %}<span class="slot">{{ t.scheduled_start }}</span> {% endif %}<b>{{ t.title }}</b> <span class="muted small">{{ t.estimate_min }}m · {{ t.energy }}{% if t.due %} · due {{ t.due }}{% endif %}{% if t.rollover_count %} · ↻{{ t.rollover_count }}{% endif %}{% if t.assigned_to_id and member_names.get(t.assigned_to_id) %} · 👤 {{ member_names[t.assigned_to_id] }}{% endif %}</span></div>
         {% if t.board_id != board.id %}<div class="muted small">{{ board_names[t.board_id].icon }} {{ board_names[t.board_id].name }}</div>
         {% elif can_edit %}
         <form method="post" action="/boards/{{ board.slug }}/tasks/{{ t.id }}/schedule" class="row">
           <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-          <input type="date" name="scheduled_date" value="{{ t.scheduled_date.isoformat() }}" class="mini"><button class="mini">Move</button>
+          <input type="date" name="scheduled_date" value="{{ t.scheduled_date.isoformat() }}" class="mini">
+          <input type="time" name="scheduled_start" value="{{ t.scheduled_start or '' }}" class="mini" title="Time of day">
+          <button class="mini">Move</button>
         </form>
         {% endif %}
       </li>
@@ -45,6 +47,27 @@
   </div>
   {% endfor %}
 </div>
+{% if team %}
+<section class="panel">
+  <h3>Who has room this week <span class="muted small">{{ team|length }} members</span></h3>
+  <p class="muted small">Free minutes per day from each member's own work schedule, days off and connected calendars, across everything they have scheduled. Only the minutes are shared — never what the work is.</p>
+  <div class="tablewrap">
+  <table class="table teamtable">
+    <tr><th>Member</th>{% for d in team[0].days %}<th class="center small">{{ weekdays[d.day.weekday()][:3] }}<br><span class="muted">{{ d.day.strftime('%d') }}</span></th>{% endfor %}</tr>
+    {% for m in team %}
+    <tr>
+      <td><b>{{ m.name }}</b> <span class="muted small">{{ m.role }}</span></td>
+      {% for d in m.days %}
+      <td class="center small {% if not d.enabled %}muted{% elif d.free_min <= 0 %}full{% endif %}" title="{{ d.used_min }} of {{ d.available_min }} min used{% if d.busy_min %} · {{ d.busy_min }} min of meetings{% endif %}">
+        {% if d.enabled %}{{ d.free_min }}m{% if d.busy_min %} <span class="muted">−{{ d.busy_min }}</span>{% endif %}{% else %}—{% endif %}
+      </td>
+      {% endfor %}
+    </tr>
+    {% endfor %}
+  </table>
+  </div>
+</section>
+{% endif %}
 {% if unscheduled %}
 <section class="panel">
   <h3>Unscheduled on this board <span class="muted small">{{ unscheduled|length }}</span></h3>

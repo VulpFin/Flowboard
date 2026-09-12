@@ -1,0 +1,16 @@
+[Unit]
+Description=Vulpfin Flowboard - send morning digests
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=flowboard
+Group=flowboard
+WorkingDirectory=/var/www/Flowboard
+EnvironmentFile=/var/www/Flowboard/.env
+ExecStart=/var/www/Flowboard/.venv/bin/python -m app.cli send-digests
+# The command decides for itself who is due (local hour + last_sent_on), so
+# running it more often than needed is harmless.
+TimeoutStartSec=600
+Nice=10

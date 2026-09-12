@@ -102,6 +102,18 @@ def refresh_conn(conn_id: str, user: User = Depends(deps.get_current_user), db: 
     return deps.redirect("/settings/calendars?msg=Calendar+list+refreshed")
 
 
+@router.post("/calendar/connections/{conn_id}/busy", dependencies=[Depends(deps.csrf_protect)])
+def set_busy(conn_id: str, busy_enabled: Optional[str] = Form(None), user: User = Depends(deps.get_current_user), db: Session = Depends(get_db)):
+    """Whether this calendar's events reduce the daily scheduling capacity."""
+    conn = cal_links.get_connection(db, user, conn_id)
+    if conn is None:
+        raise HTTPException(404, "Connection not found")
+    conn.busy_enabled = bool(busy_enabled)
+    conn.busy_cache_json, conn.busy_fetched_at = "{}", None  # drop the cache either way
+    db.flush()
+    return deps.redirect("/settings/calendars?msg=" + ("Meetings+from+this+calendar+now+reduce+your+daily+capacity" if conn.busy_enabled else "This+calendar+no+longer+affects+your+capacity"))
+
+
 @router.post("/calendar/connections/{conn_id}/disconnect", dependencies=[Depends(deps.csrf_protect)])
 def disconnect(conn_id: str, user: User = Depends(deps.get_current_user), db: Session = Depends(get_db)):
     conn = cal_links.get_connection(db, user, conn_id)

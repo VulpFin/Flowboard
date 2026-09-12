@@ -64,9 +64,30 @@ Scopes requested: `calendar.events`, `calendar.readonly` (to list calendars),
 3. Removing the due date deletes the external event and marks the link
    `orphaned`. Deleting the task deletes linked events. Disconnecting an
    account **keeps** events already in the calendar.
-4. Nothing flows from the calendar back into Flowboard (no two-way sync yet).
+4. Events themselves never flow back into Flowboard as tasks (no two-way sync),
+   but since 2.2 their **busy time does** feed scheduling — read-only, below.
+
+## Busy time → capacity (2.2)
+
+`app/calendars/busy.py` asks each enabled connection for the intervals the
+account is busy in across the scheduling horizon and subtracts the minutes that
+fall inside each day's working window from that day's limit, so auto-scheduling
+plans around meetings instead of on top of them.
+
+* Google: `POST /freeBusy` for the target calendar (or `primary`).
+* Microsoft: `GET /me/calendarView` with `Prefer: outlook.timezone="UTC"`,
+  skipping all-day events and anything marked *free* / *working elsewhere*.
+  Both use scopes the connection already holds — no re-consent.
+* Cached per connection for 15 minutes (`busy_cache_json`, `busy_fetched_at`).
+* Switchable per connection (Settings → Calendars) and account-wide
+  (Settings → Schedule); switching it off also drops that connection's cache.
+* Every failure is silent: no connection, expired token or provider outage all
+  mean "no busy information", i.e. the full declared capacity.
+
+Only free/busy windows are read — never titles, attendees or descriptions.
 
 Adding a provider: subclass `CalendarProvider` in
 `app/calendars/providers.py` (authorize_url / exchange_code / refresh /
-account_info / list_calendars / create_event / update_event / delete_event) and
-add it to `CALENDAR_PROVIDERS`. Nothing else changes.
+account_info / list_calendars / create_event / update_event / delete_event,
+optionally `free_busy`) and add it to `CALENDAR_PROVIDERS`. Nothing else
+changes; a provider without `free_busy` simply contributes no busy time.

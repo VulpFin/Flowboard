@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+from datetime import date
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Form, Request
@@ -64,7 +65,17 @@ def account_save(request: Request, display_name: str = Form(""), email: str = Fo
 
 @router.get("/schedule")
 def schedule_page(request: Request, user: User = Depends(deps.get_current_user), db: Session = Depends(get_db)):
-    return deps.render(request, "settings/schedule.html", {"section": "schedule", "sched": schedule_service.load_schedule(user), "weekdays": schedule_service.WEEKDAYS, "calibration": reflection_service.get_profile(user), "calibration_text": reflection_service.prompt_summary(user)}, db=db)
+    sched = schedule_service.load_schedule(user)
+    learned = reflection_service.learned_curve(user)
+    declared = {i: schedule_service.declared_blocks(sched["days"][str(i)]) for i in range(7)}
+    learned_preview = schedule_service.learned_blocks(learned.get("levels") or {}, sched["days"][str(date.today().weekday())]) if learned else []
+    return deps.render(request, "settings/schedule.html", {
+        "section": "schedule", "sched": sched, "weekdays": schedule_service.WEEKDAYS,
+        "calibration": reflection_service.get_profile(user), "calibration_text": reflection_service.prompt_summary(user),
+        "declared_curve": {i: schedule_service.curve_text(b) for i, b in declared.items()},
+        "learned": learned, "learned_curve_text": schedule_service.curve_text(learned_preview),
+        "curve_min_samples": reflection_service.CURVE_MIN_SAMPLES, "nudge_after": reflection_service.NUDGE_AFTER,
+    }, db=db)
 
 
 @router.post("/schedule", dependencies=[Depends(deps.csrf_protect)])
@@ -82,6 +93,44 @@ def calibration_reset(user: User = Depends(deps.get_current_user), db: Session =
     db.execute(delete(TaskReflection).where(TaskReflection.user_id == user.id))
     user.profile.calibration_json = "{}"
     return deps.redirect("/settings/schedule?msg=Calibration+data+cleared")
+
+
+@router.get("/digest")
+def digest_page(request: Request, user: User = Depends(deps.get_current_user), db: Session = Depends(get_db)):
+    from ...ai.client import resolve_model
+    from ...services import digest as digest_service
+
+    model = resolve_model(db, user)
+    return deps.render(request, "settings/digest.html", {
+        "section": "digest", "digest": digest_service.load(user), "all_boards": board_service.list_boards_for_user(db, user),
+        "channels": list(digest_service.CHANNELS), "ai_model": model.ref if model else None,
+        "smtp_configured": bool(app_settings.SMTP_HOST), "timezone": user.profile.timezone if user.profile else "UTC",
+    }, db=db)
+
+
+@router.post("/digest", dependencies=[Depends(deps.csrf_protect)])
+async def digest_save(request: Request, user: User = Depends(deps.get_current_user), db: Session = Depends(get_db)):
+    from ...services import digest as digest_service
+
+    form = await request.form()
+    tz = (form.get("timezone") or "").strip()[:64]
+    if tz:
+        user.profile.timezone = tz
+    digest_service.save(db, user, form, all_board_ids=[b.id for b in board_service.list_boards_for_user(db, user)])
+    return deps.redirect("/settings/digest?msg=Digest+settings+saved")
+
+
+@router.post("/digest/preview", dependencies=[Depends(deps.csrf_protect)])
+def digest_preview(request: Request, user: User = Depends(deps.get_current_user), db: Session = Depends(get_db)):
+    """Render today's digest without sending or marking it sent."""
+    from ...services import digest as digest_service
+
+    built = digest_service.build(db, user)
+    if built is None:
+        subject, body = "Nothing to send today", "“Only when something is due” is on and nothing is scheduled, due or overdue today."
+    else:
+        subject, body = built[0], built[1]
+    return deps.render(request, "settings/_digest_preview.html", {"subject": subject, "body": body})
 
 
 @router.get("/ai-defaults")

@@ -18,18 +18,32 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..models import Board, Task, TaskReflection, User, UserProfile, utcnow
+from . import clock
 
 ENERGY_RANK = {"low": 0, "medium": 1, "high": 2}
+RANK_ENERGY = {v: k for k, v in ENERGY_RANK.items()}
 MIN_SAMPLES = 3
+#: after this many reflections the full questionnaire is only shown when the
+#: estimate is likely off (see `should_ask_full`)
+NUDGE_AFTER = 10
+#: |actual/estimate - 1| above this counts as "this context is badly calibrated"
+OFF_BY = 0.30
+#: tasks at least this long always get the full questions
+LONG_TASK_MIN = 90
+#: reflections with an hour stamp needed before the learned energy curve is shown
+CURVE_MIN_SAMPLES = 15
 
 
-def record(db: Session, user: User, board: Board, task: Task, *, actual_min: Optional[int], actual_energy: Optional[str], clarity: Optional[int], difficulty: Optional[int], notes: str = "") -> TaskReflection:
+def record(db: Session, user: User, board: Board, task: Task, *, actual_min: Optional[int], actual_energy: Optional[str], clarity: Optional[int], difficulty: Optional[int], notes: str = "", hour_of_day: Optional[int] = None) -> TaskReflection:
+    if hour_of_day is None:
+        hour_of_day = clock.local_hour(user)
     r = TaskReflection(
         task_id=task.id, board_id=board.id, user_id=user.id, title=task.title[:300], context=task.primary_context[:32],
         estimate_min=task.estimate_min, actual_min=actual_min if actual_min and 1 <= actual_min <= 1440 else None,
         planned_energy=task.energy, actual_energy=actual_energy if actual_energy in ENERGY_RANK else None,
         clarity=clarity if clarity and 1 <= clarity <= 5 else None, difficulty=difficulty if difficulty and 1 <= difficulty <= 5 else None,
         had_instructions=bool(task.instructions), notes=(notes or "").strip()[:2000],
+        hour_of_day=hour_of_day if isinstance(hour_of_day, int) and 0 <= hour_of_day <= 23 else None,
     )
     db.add(r)
     if r.actual_min:
@@ -52,7 +66,10 @@ def compute_profile(rows: List[TaskReflection]) -> Dict[str, Any]:
     clarity_with_instr: List[int] = []
     difficulty: List[int] = []
     notes: List[str] = []
+    energy_by_hour: Dict[int, List[int]] = defaultdict(list)
     for r in rows:
+        if r.hour_of_day is not None and r.actual_energy in ENERGY_RANK:
+            energy_by_hour[int(r.hour_of_day)].append(ENERGY_RANK[r.actual_energy])
         if r.actual_min and r.estimate_min:
             ratio = r.actual_min / r.estimate_min
             ratio = max(0.2, min(ratio, 5.0))
@@ -85,6 +102,8 @@ def compute_profile(rows: List[TaskReflection]) -> Dict[str, Any]:
         "clarity_with_instructions_avg": avg(clarity_with_instr),
         "difficulty_avg": avg(difficulty),
         "recent_notes": notes[:5],
+        "energy_by_hour": {str(h): {"avg": avg(v), "n": len(v)} for h, v in sorted(energy_by_hour.items())},
+        "energy_hour_samples": sum(len(v) for v in energy_by_hour.values()),
         "updated_at": utcnow().isoformat(),
     }
     return prof
@@ -122,6 +141,71 @@ def time_multiplier(user: User, context: Optional[str] = None) -> float:
 def adjusted_estimate(user: User, estimate_min: int, context: Optional[str] = None) -> int:
     m = time_multiplier(user, context)
     return max(5, min(1440, int(round(estimate_min * m)))) if m != 1.0 else estimate_min
+
+
+def context_ratio(user: User, context: Optional[str]) -> Optional[float]:
+    """Observed actual/estimate ratio for a context (or overall), if we have any."""
+    prof = get_profile(user)
+    if context:
+        c = (prof.get("time_ratio_by_context") or {}).get(context)
+        if c and c.get("ratio"):
+            return float(c["ratio"])
+    return float(prof["time_ratio"]) if prof.get("time_ratio") else None
+
+
+def should_ask_full(user: User, task: Task) -> bool:
+    """Full questionnaire, or the one-click nudge?
+
+    The full form always runs until the user has enough reflections to calibrate
+    from (`NUDGE_AFTER`), and afterwards only when the answer is likely to be
+    interesting: the context is badly calibrated, the task carried generated
+    instructions (we want the clarity rating), or it was a long task.
+    """
+    from . import schedule  # local import: schedule imports nothing from here
+
+    if schedule.load_schedule(user).get("always_full_reflection"):
+        return True
+    prof = get_profile(user)
+    if int(prof.get("samples") or 0) < NUDGE_AFTER:
+        return True
+    if task.instructions:
+        return True
+    if (task.estimate_min or 0) >= LONG_TASK_MIN:
+        return True
+    ratio = context_ratio(user, task.primary_context)
+    return bool(ratio is not None and abs(ratio - 1.0) > OFF_BY)
+
+
+def learned_curve(user: User) -> Dict[str, Any]:
+    """Observed energy level per hour of day, from `actual_energy` vs the hour a
+    task was finished.  Empty until `CURVE_MIN_SAMPLES` stamped reflections.
+
+    Hours where finished work was reported as high-energy are read as hours this
+    person *can* do demanding work in; the levels are relative to their own mean,
+    so a consistently calm week does not flatten to "all low".
+    """
+    prof = get_profile(user)
+    by_hour = prof.get("energy_by_hour") or {}
+    if int(prof.get("energy_hour_samples") or 0) < CURVE_MIN_SAMPLES or not by_hour:
+        return {}
+    values = {int(h): float(v["avg"]) for h, v in by_hour.items() if v.get("avg") is not None}
+    if not values:
+        return {}
+    mean = sum(values.values()) / len(values)
+    spread = max(0.25, (max(values.values()) - min(values.values())) / 3.0)
+    levels: Dict[int, str] = {}
+    for hour, val in values.items():
+        if val >= mean + spread:
+            levels[hour] = "high"
+        elif val <= mean - spread:
+            levels[hour] = "low"
+        else:
+            levels[hour] = "medium"
+    return {
+        "levels": {str(h): lvl for h, lvl in sorted(levels.items())},
+        "samples": int(prof.get("energy_hour_samples") or 0),
+        "counts": {h: int(by_hour[str(h)]["n"]) for h in sorted(values)},
+    }
 
 
 def prompt_summary(user: User) -> str:

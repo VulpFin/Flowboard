@@ -5,8 +5,9 @@
 <section class="panel">
 <form method="post" action="/settings/schedule" class="stack">
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <div class="tablewrap">
   <table class="table schedtable">
-    <tr><th>Day</th><th>Work?</th><th>Start</th><th>End</th><th>Max minutes</th><th>Max high-energy min</th></tr>
+    <tr><th>Day</th><th>Work?</th><th>Start</th><th>End</th><th>Max minutes</th><th>Max high-energy min</th><th title="High energy until…">High until</th><th title="Medium energy until…; low energy after that">Medium until</th></tr>
     {% for i in range(7) %}{% set d = sched.days[i|string] %}
     <tr>
       <td><b>{{ weekdays[i] }}</b></td>
@@ -15,16 +16,49 @@
       <td><input type="time" name="end_{{ i }}" value="{{ d.end }}"></td>
       <td><input type="number" name="max_min_{{ i }}" min="0" max="1440" step="15" value="{{ d.max_min }}" title="Total minutes of tasks placed on this day"></td>
       <td><input type="number" name="max_high_min_{{ i }}" min="0" max="1440" step="15" value="{{ d.max_high_min }}" title="Of which high-energy tasks"></td>
+      <td><input type="time" name="high_end_{{ i }}" value="{{ d.high_end }}" title="Leave empty for the default morning-high curve"></td>
+      <td><input type="time" name="medium_end_{{ i }}" value="{{ d.medium_end }}" title="After this, the rest of the day counts as low energy"></td>
     </tr>
     {% endfor %}
   </table>
+  </div>
+  <p class="muted small">Energy curve: work is <b>high</b> energy from the start until “high until”, <b>medium</b> until “medium until”, and <b>low</b> after that. Auto-schedule puts high-energy tasks in high-energy blocks and writes a start time on each task. Leave the two columns empty for the default (first half of the day high, then medium, the rest low).</p>
   <label>Days off (one date per line or comma separated, YYYY-MM-DD)<textarea name="days_off" rows="2" placeholder="2026-12-25">{{ sched.days_off|join('\n') }}</textarea></label>
   <div class="row">
     <label class="check"><input type="checkbox" name="auto_rollover" {% if sched.auto_rollover %}checked{% endif %}> Automatically move unfinished tasks to the next free day</label>
     <label>Scheduling horizon (days) <input type="number" name="horizon_days" min="7" max="90" value="{{ sched.horizon_days }}"></label>
   </div>
+  <div class="row">
+    <label class="check" title="Busy time from calendars connected under Settings → Calendars is subtracted from each day's limit"><input type="checkbox" name="calendar_busy" {% if sched.calendar_busy %}checked{% endif %}> Subtract meetings in my connected calendars from each day's capacity</label>
+  </div>
+  <div class="row">
+    <label class="check" title="Off by default after {{ nudge_after }} reflections: you then get a one-click “took about as long as planned?” unless the estimate looks off"><input type="checkbox" name="always_full_reflection" {% if sched.always_full_reflection %}checked{% endif %}> Always ask the full questions when I finish a task</label>
+  </div>
+  <div class="row">
+    <label class="check" title="Use the curve learned from your reflections instead of the columns above"><input type="checkbox" name="use_learned_curve" {% if sched.use_learned_curve %}checked{% endif %} {% if not learned %}disabled{% endif %}> Use learned energy curve{% if not learned %} <span class="muted small">(needs {{ curve_min_samples }} reflections with an energy answer)</span>{% endif %}</label>
+  </div>
   <button type="submit" class="btn primary">Save schedule</button>
 </form>
+</section>
+
+<h2>Energy curve</h2>
+<p class="muted">What you declared above, next to what your reflections actually say. The learned curve comes from the energy you reported on finished tasks and the hour you finished them.</p>
+<section class="panel">
+  <table class="table">
+    <tr><th>Day</th><th>Declared</th></tr>
+    {% for i in range(7) %}<tr><td>{{ weekdays[i][:3] }}</td><td class="small">{{ declared_curve[i] or '—' }}</td></tr>{% endfor %}
+  </table>
+  {% if learned %}
+    <h4>Learned from {{ learned.samples }} reflections</h4>
+    <p class="small">{{ learned_curve_text or '—' }}</p>
+    <table class="table">
+      <tr><th>Hour</th>{% for h, lvl in learned.levels.items() %}<th class="center small">{{ h }}</th>{% endfor %}</tr>
+      <tr><td class="muted small">observed</td>{% for h, lvl in learned.levels.items() %}<td class="center small energy-{{ lvl }}">{{ lvl }}</td>{% endfor %}</tr>
+    </table>
+    <p class="muted small">Tick <i>Use learned energy curve</i> above to schedule against this instead of the declared one.</p>
+  {% else %}
+    <p class="muted">Not enough data yet — {{ curve_min_samples }} reflections that answer “how much energy did it really take?” are needed before a learned curve appears.</p>
+  {% endif %}
 </section>
 
 <h2>Calibration</h2>

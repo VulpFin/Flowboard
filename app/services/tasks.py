@@ -124,7 +124,21 @@ def create_task(db: Session, board: Board, data: Dict[str, Any], *, actor_id: Op
     return task
 
 
-UPDATABLE = {"title", "description", "estimate_min", "importance", "energy", "due", "contexts", "depends_on", "tags", "manual_order", "status", "parent_id", "last_actual_min", "scheduled_date", "instructions"}
+UPDATABLE = {"title", "description", "estimate_min", "importance", "energy", "due", "contexts", "depends_on", "tags", "manual_order", "status", "parent_id", "last_actual_min", "scheduled_date", "scheduled_start", "instructions", "assigned_to_id"}
+
+
+def normalize_hhmm(value: Any) -> Optional[str]:
+    """"9:5" / "09:05" -> "09:05"; anything else -> None."""
+    if not value:
+        return None
+    try:
+        h, m = str(value).strip().split(":")[:2]
+        h, m = int(h), int(m)
+    except (ValueError, TypeError):
+        return None
+    if not (0 <= h <= 23 and 0 <= m <= 59):
+        return None
+    return f"{h:02d}:{m:02d}"
 
 
 def update_task(db: Session, board: Board, task: Task, patch: Dict[str, Any], *, actor_id: Optional[str] = None, actor_kind: str = "user") -> Task:
@@ -171,6 +185,10 @@ def update_task(db: Session, board: Board, task: Task, patch: Dict[str, Any], *,
                     continue
             elif value is not None and not isinstance(value, date):
                 continue
+        elif key == "scheduled_start":
+            value = normalize_hhmm(value)
+        elif key == "assigned_to_id":
+            value = (str(value).strip()[:36] or None) if value else None
         old = getattr(task, key)
         if old != value:
             changes[key] = {"from": old, "to": value}

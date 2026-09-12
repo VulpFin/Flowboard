@@ -36,6 +36,24 @@ ssh root@198.74.54.235 'bash /var/www/Flowboard/deploy/deploy.sh'
 `deploy/deploy.sh` creates the service user, installs requirements into the
 venv, runs `alembic upgrade head`, restarts the service and hits `/healthz`.
 
+### Morning digest timer (2.2)
+
+```bash
+install -m 644 deploy/systemd/flowboard-digest.service /etc/systemd/system/
+install -m 644 deploy/systemd/flowboard-digest.timer   /etc/systemd/system/
+systemctl daemon-reload
+systemctl enable --now flowboard-digest.timer
+systemctl list-timers flowboard-digest.timer
+journalctl -u flowboard-digest.service -n 50
+```
+
+The timer fires every 15 minutes and the command decides who is due (each
+user's local hour plus `last_sent_on`), so extra runs are harmless. Digests
+need SMTP in `.env` (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`,
+`EMAIL_FROM`); without it the run logs what it would have sent. Remember that
+systemd's `EnvironmentFile` does **not** strip inline comments — keep comments
+in `.env` on their own lines.
+
 Database backup before migrations: `sqlite3 data/flowboard.sqlite3
 ".backup /root/backups/flowboard/<ts>/flowboard.sqlite3"` (or copy the file
 while the service is stopped). Postgres can be used instead by setting

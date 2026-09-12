@@ -49,6 +49,16 @@ def task_uid(task: Task) -> str:
     return f"task-{task.id}@flowboard.fyi"
 
 
+def _slot_minutes(value: Optional[str]) -> Optional[int]:
+    """"HH:MM" -> minutes since midnight, or None."""
+    try:
+        h, m = (value or "").split(":")[:2]
+        h, m = int(h), int(m)
+    except (ValueError, TypeError):
+        return None
+    return h * 60 + m if 0 <= h <= 23 and 0 <= m <= 59 else None
+
+
 def task_component(task: Task, *, now: Optional[datetime] = None, board_name: str = "", default_duration_min: int = 60) -> List[str]:
     now = now or datetime.utcnow()
     due = task.due_at or parse_due(task.due)
@@ -59,6 +69,11 @@ def task_component(task: Task, *, now: Optional[datetime] = None, board_name: st
         meta = f"Board: {board_name} · " + meta
     desc_parts.append(meta)
     description = "\n".join(p for p in desc_parts if p)
+    if due is None and task.scheduled_date:
+        # 2.2: a task with a planned slot is a real appointment even without a due date
+        start_min = _slot_minutes(task.scheduled_start)
+        if start_min is not None:
+            due = datetime.combine(task.scheduled_date, datetime.min.time()) + timedelta(minutes=start_min + max(5, task.estimate_min or default_duration_min))
     seq = int(task.updated_at.timestamp()) if task.updated_at else 0
     common = [
         f"UID:{task_uid(task)}",
@@ -132,6 +147,12 @@ def plan_ics(planned: List[Task], board: Board, *, start: Optional[datetime] = N
     now = datetime.utcnow()
     comps = []
     for t in planned:
+        # a task the planner already gave a slot keeps it, as long as it is not in the past
+        slot = _slot_minutes(t.scheduled_start)
+        if t.scheduled_date and slot is not None:
+            planned_at = datetime.combine(t.scheduled_date, datetime.min.time()) + timedelta(minutes=slot)
+            if planned_at >= cur:
+                cur = planned_at
         end = cur + timedelta(minutes=max(5, t.estimate_min))
         uid_extra = hashlib.sha1(f"{t.id}{cur.isoformat()}".encode()).hexdigest()[:8]
         comps.append([

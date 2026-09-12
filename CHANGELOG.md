@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.2.0 — 2026-09-12
+
+* **Reflection nudges.** After 10 reflections the full questionnaire only opens when the answer is likely to matter — the context is off by more than 30%, the task carried AI instructions, or it was ≥ 90 minutes. Otherwise a one-line prompt asks *"took about as long as planned?"*; **Yes** records a reflection with `actual_min = estimate` in one click, **No, tell me more** opens the full form. Settings → Schedule & Calibration → *Always ask the full questions* restores the old behaviour.
+* **Focus timer → reflection.** When the timer stops or finishes it asks *"mark done?"*; if you say yes the task is completed and the elapsed minutes pre-fill `actual_min` in the reflection. The old `prompt()` "how many minutes?" dialog is gone.
+* **Calendar-aware capacity.** Busy time from connected Google/Microsoft calendars (Google `freeBusy`, Microsoft `calendarView`) is subtracted from each day's limit, cached 15 minutes per connection, and shown as *− 90 min meetings* on the week view and in the AI context. Auto-schedule never plans work on top of a meeting. Off per connection (Settings → Calendars) or account-wide (Settings → Schedule). Any calendar failure is silent: you keep the full day.
+* **Energy curve.** Each weekday now has high / medium / low energy blocks (defaults: morning high, afternoon medium, evening low). Auto-schedule places tasks into blocks that match their energy and writes `scheduled_start` (HH:MM), which the board, week view and ICS/plan exports use. Reflections record the hour of day; after 15 of them a *learned* curve is shown next to the declared one with a *Use learned curve* toggle.
+* **Shared boards.** Tasks can be assigned to a board member (`assigned_to_id`); auto-scheduling then uses *that* member's schedule, calendar and workload. Boards with more than one member get a *Who has room this week* panel — free minutes per member per day, never their other boards' task titles — and the assistant is told member names, ids and free minutes.
+* **Morning digest.** Opt-in per user (Settings → Morning Digest): local hour, timezone, which boards, "only when something is due". `python -m app.cli send-digests` runs the *Daily briefing* prompt through your own AI provider (plain non-AI digest when no provider is configured) and emails it; a systemd timer (`flowboard-digest.timer`) runs every 15 minutes and `last_sent_on` keeps it to one a day. Delivery goes through a channel registry so web push can be added later.
+* **Mobile layout.** Below 700px: single-column board with only the first list open, sticky top bar with the board switcher and a ☰ menu, add-task form folded behind a button, assistant below the board, 44px tap targets on card actions, full-width reflection modal and nudge.
+* Migration `0003` (tasks.scheduled_start / assigned_to_id, task_reflections.hour_of_day, user_profiles.digest_json, calendar_connections.busy_enabled / busy_cache_json / busy_fetched_at) — plain `ADD COLUMN`, idempotent, no table rebuilds.
+
 ## 2.1.2 — 2026-09-12
 
 * Fix: the task *Edit* button rendered an empty card — the board section's `hx-select="#board"` was inherited by child htmx requests and filtered the edit form away. Added `hx-disinherit`.

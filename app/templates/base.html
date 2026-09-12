@@ -22,13 +22,15 @@
         <a class="linkbtn" href="/boards" title="All boards">Boards</a>
       </form>
       {% endif %}
-      {% block topbar %}{% endblock %}
-      <span class="spacer"></span>
-      <nav class="usernav">
-        <a class="linkbtn" href="/settings/ai-providers" title="AI providers">AI</a>
-        <a class="linkbtn" href="/settings/account" title="Settings">Settings</a>
-        <form method="post" action="/logout" style="display:inline"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="linkbtn" type="submit" title="Sign out {{ user.username }}">Sign out</button></form>
-      </nav>
+      <button type="button" class="linkbtn menutoggle" aria-expanded="false" aria-label="Menu" title="Menu">☰</button>
+      <div class="topextra">
+        {% block topbar %}{% endblock %}
+        <nav class="usernav">
+          <a class="linkbtn" href="/settings/ai-providers" title="AI providers">AI</a>
+          <a class="linkbtn" href="/settings/account" title="Settings">Settings</a>
+          <form method="post" action="/logout" style="display:inline"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="linkbtn" type="submit" title="Sign out {{ user.username }}">Sign out</button></form>
+        </nav>
+      </div>
     {% endif %}
   </header>
   <main class="wrap">

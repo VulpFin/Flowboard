@@ -46,8 +46,10 @@ class Task(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     parent_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True, index=True)  # subtasks
     ai_generated: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     scheduled_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True, index=True)  # day the planner placed it on
+    scheduled_start: Mapped[Optional[str]] = mapped_column(String(5), nullable=True)  # "HH:MM" slot inside that day (energy-curve aware)
     rollover_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     instructions: Mapped[str] = mapped_column(Text, default="", nullable=False)  # AI "how to do this" (markdown)
+    assigned_to_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True, index=True)  # board member who owns this task
 
     # ---- convenience accessors (keep templates/planner unchanged) -------
     @property
@@ -115,6 +117,8 @@ class Task(UUIDPrimaryKeyMixin, TimestampMixin, Base):
             "completions": self.completions,
             "parent_id": self.parent_id,
             "scheduled_date": self.scheduled_date.isoformat() if self.scheduled_date else None,
+            "scheduled_start": self.scheduled_start,
+            "assigned_to_id": self.assigned_to_id,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
 
@@ -155,4 +159,5 @@ class TaskReflection(UUIDPrimaryKeyMixin, Base):
     difficulty: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)  # 1-5
     had_instructions: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     notes: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    hour_of_day: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)  # 0-23 local hour the task was finished (learned energy curve)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)

@@ -149,4 +149,57 @@ button.mini, input.mini, select.mini { font-size: .78rem; padding: .15rem .45rem
 .schedtask.other { opacity: .6; border-left-style: dashed; }
 .schedtable input[type=number] { width: 6rem; }
 .flash.autohide { position: fixed; bottom: 1rem; right: 1rem; z-index: 50; box-shadow: 0 4px 16px rgba(0,0,0,.4); }
-@media (max-width: 700px) { .boardtools { float: none; display: flex; margin-top: .3rem; } }
+
+/* ---- 2.2: nudges, energy curve, team capacity, mobile ---------------- */
+.reflectnudge { position: fixed; bottom: 1rem; right: 1rem; left: auto; z-index: 60; max-width: min(38rem, 94vw);
+  background: var(--panel); border: 1px solid var(--accent); border-radius: .9rem; padding: .6rem .8rem;
+  box-shadow: 0 6px 20px rgba(0,0,0,.45); }
+.reflectnudge form { gap: .4rem; }
+.reflectnudge span { flex: 1 1 14rem; }
+.slot { font-family: monospace; font-size: .8rem; padding: .05rem .3rem; border-radius: .35rem; background: #1c2350; }
+.tablewrap { overflow-x: auto; }
+.teamtable td.full { color: var(--danger); }
+.teamtable td.center, .teamtable th.center, td.center, th.center { text-align: center; }
+.energy-high { color: #f0b35c; font-weight: 600; }
+.energy-medium { color: var(--text); }
+.energy-low { color: var(--muted); }
+.digestpreview { white-space: pre-wrap; background: #0b1021; padding: .6rem; border-radius: .6rem; max-height: 26rem; overflow: auto; }
+.new-task summary { cursor: pointer; list-style: none; }
+.new-task summary::-webkit-details-marker { display: none; }
+.new-task summary::before { content: '▾ '; color: var(--muted); }
+.new-task details:not([open]) summary::before { content: '＋ '; }
+.menutoggle { display: none; }
+.topextra { display: contents; }
+.topbar .usernav { margin-left: auto; }
+
+@media (max-width: 700px) {
+  .boardtools { float: none; display: flex; margin-top: .3rem; flex-wrap: wrap; }
+  .wrap { padding: .6rem; }
+  /* one column per list, board switcher always reachable at the top */
+  .cols { grid-template-columns: 1fr; }
+  .topbar { padding: .5rem .6rem; gap: .4rem; }
+  .topbar .brand { font-size: 1rem; margin-right: .2rem; }
+  .boardswitch { flex: 1 1 auto; min-width: 0; }
+  .boardswitch select { max-width: 45vw; }
+  .menutoggle { display: inline-block; margin-left: auto; }
+  .topextra { display: none; width: 100%; flex-wrap: wrap; gap: .35rem; }
+  .topextra.open { display: flex; }
+  .topextra .usernav { flex-wrap: wrap; margin-left: 0; }
+  .planform { flex-wrap: wrap; width: 100%; }
+  .planform input { flex: 1 1 8rem; min-width: 0; }
+  /* 44px tap targets on everything you press on a card */
+  .actions { gap: .4rem; }
+  .actions button, .actions .btn-link, .actions select, .actions input[type=date], .actions input[type=time] {
+    min-height: 44px; padding: .55rem .7rem; font-size: .9rem;
+  }
+  .card .schedform { display: flex; flex-wrap: wrap; gap: .3rem; }
+  .colhead, .cardhead { min-height: 44px; align-items: center; }
+  .reflectcard { width: 96vw; max-width: none; max-height: 88vh; overflow-y: auto; }
+  .reflectmodal { align-items: flex-end; }
+  .reflectnudge { left: .5rem; right: .5rem; bottom: .5rem; max-width: none; }
+  .flash.autohide { left: .5rem; right: .5rem; }
+  .weekgrid { grid-template-columns: 1fr; }
+  .taskform input, .taskform select { flex: 1 1 100%; }
+  .settings { grid-template-columns: 1fr; }
+  .settingsnav { flex-direction: row; flex-wrap: wrap; }
+}

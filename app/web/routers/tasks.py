@@ -15,6 +15,7 @@ from ...calendars import ics
 from ...calendars import links as cal_links
 from ...db import get_db
 from ...models import Board, User
+from ...services import boards as board_service
 from ...services import reflections as reflection_service
 from ...services import schedule as schedule_service
 from ...services import tasks as task_service
@@ -27,7 +28,8 @@ router = APIRouter(prefix="/boards/{slug}", tags=["tasks"])
 def _board_partial(request: Request, db: Session, board: Board, extra: Optional[dict] = None):
     tasks = task_service.list_tasks(db, board, include_done=False)
     user = getattr(request.state, "user", None)
-    ctx = {"columns": task_service.as_columns(tasks), "stats": task_service.board_stats(task_service.list_tasks(db, board, include_done=True)), "cal_links": cal_links.links_for_board(db, board), "can_edit": True, "connections": cal_links.list_connections(db, user) if user else []}
+    members = board_service.member_list(db, board)
+    ctx = {"columns": task_service.as_columns(tasks), "stats": task_service.board_stats(task_service.list_tasks(db, board, include_done=True)), "cal_links": cal_links.links_for_board(db, board), "can_edit": True, "connections": cal_links.list_connections(db, user) if user else [], "members": members, "member_names": {m["id"]: m["name"] for m in members}}
     ctx.update(extra or {})
     return deps.render(request, "boards/_board.html", ctx)
 
@@ -65,30 +67,84 @@ def add_task(request: Request, title: str = Form(...), description: str = Form("
     return deps.redirect(f"/boards/{board.slug}/")
 
 
+def _reflect_ctx(user: User, task, *, actual_min: Optional[int] = None, force_full: bool = False) -> dict:
+    """Full questionnaire or one-click nudge (see services/reflections.should_ask_full)."""
+    return {
+        "reflect_task": task,
+        "reflect_full": force_full or reflection_service.should_ask_full(user, task),
+        "reflect_actual_min": actual_min,
+    }
+
+
+def _int_or_none(v):
+    try:
+        return int(v) if v not in (None, "") else None
+    except (TypeError, ValueError):
+        return None
+
+
 @router.post("/tasks/{task_id}/done", dependencies=[Depends(deps.csrf_protect)])
-def mark_done(request: Request, task_id: str, board: Board = Depends(deps.current_board_editor), user: User = Depends(deps.get_current_user), db: Session = Depends(get_db)):
+def mark_done(request: Request, task_id: str, actual_min: Optional[str] = Form(None), board: Board = Depends(deps.current_board_editor), user: User = Depends(deps.get_current_user), db: Session = Depends(get_db)):
+    """`actual_min` is sent by the focus timer (elapsed minutes) and pre-fills the
+    reflection; the Done button sends nothing."""
     t = task_service.get_task(db, board, task_id)
     if t is None:
         raise HTTPException(404, "Task not found")
+    elapsed = _int_or_none(actual_min)
+    if elapsed and 1 <= elapsed <= 1440:
+        t.last_actual_min = elapsed
+    else:
+        elapsed = None
     task_service.complete_task(db, board, t, actor_id=user.id)
     _after_change(db, board, t, user)
     if deps.is_htmx(request):
-        return _board_partial(request, db, board, {"reflect_task": t})
+        return _board_partial(request, db, board, _reflect_ctx(user, t, actual_min=elapsed))
     return deps.redirect(f"/boards/{board.slug}/")
 
 
 @router.post("/tasks/{task_id}/reflect", dependencies=[Depends(deps.csrf_protect)])
-def reflect(request: Request, task_id: str, actual_min: Optional[str] = Form(None), actual_energy: Optional[str] = Form(None), clarity: Optional[str] = Form(None), difficulty: Optional[str] = Form(None), notes: str = Form(""), skip: Optional[str] = Form(None), board: Board = Depends(deps.current_board_editor), user: User = Depends(deps.get_current_user), db: Session = Depends(get_db)):
-    """Completion questions ("how long did it really take?") -> calibration profile."""
+def reflect(request: Request, task_id: str, actual_min: Optional[str] = Form(None), actual_energy: Optional[str] = Form(None), clarity: Optional[str] = Form(None), difficulty: Optional[str] = Form(None), notes: str = Form(""), skip: Optional[str] = Form(None), quick: Optional[str] = Form(None), board: Board = Depends(deps.current_board_editor), user: User = Depends(deps.get_current_user), db: Session = Depends(get_db)):
+    """Completion questions ("how long did it really take?") -> calibration profile.
+
+    `quick=1` is the one-click "took about as long as planned" nudge: it records a
+    reflection with `actual_min = estimate_min` so the ratio keeps learning."""
     t = task_service.get_task(db, board, task_id)
     if t is not None and not skip:
-        def _int(v):
-            try:
-                return int(v) if v not in (None, "") else None
-            except ValueError:
-                return None
-        reflection_service.record(db, user, board, t, actual_min=_int(actual_min), actual_energy=actual_energy or None, clarity=_int(clarity), difficulty=_int(difficulty), notes=notes)
+        if quick:
+            reflection_service.record(db, user, board, t, actual_min=t.estimate_min, actual_energy=t.energy, clarity=None, difficulty=None, notes="")
+        else:
+            reflection_service.record(db, user, board, t, actual_min=_int_or_none(actual_min), actual_energy=actual_energy or None, clarity=_int_or_none(clarity), difficulty=_int_or_none(difficulty), notes=notes)
     return deps.render(request, "boards/_reflect.html", {"reflect_task": None, "thanks": not skip and t is not None})
+
+
+@router.post("/tasks/{task_id}/reflect/full", dependencies=[Depends(deps.csrf_protect)])
+def reflect_full(request: Request, task_id: str, actual_min: Optional[str] = Form(None), board: Board = Depends(deps.current_board_editor), user: User = Depends(deps.get_current_user), db: Session = Depends(get_db)):
+    """"No, tell me more" on the nudge -> the full questionnaire."""
+    t = task_service.get_task(db, board, task_id)
+    if t is None:
+        raise HTTPException(404, "Task not found")
+    return deps.render(request, "boards/_reflect.html", _reflect_ctx(user, t, actual_min=_int_or_none(actual_min), force_full=True))
+
+
+@router.post("/tasks/{task_id}/assign", dependencies=[Depends(deps.csrf_protect)])
+def assign_task(request: Request, task_id: str, assigned_to_id: str = Form(""), board: Board = Depends(deps.current_board_editor), user: User = Depends(deps.get_current_user), db: Session = Depends(get_db)):
+    """Give a task to a board member; auto-scheduling then uses *their* capacity."""
+    t = task_service.get_task(db, board, task_id)
+    if t is None:
+        raise HTTPException(404, "Task not found")
+    member_ids = {m.user_id for m in board.memberships}
+    new_owner = assigned_to_id.strip() or None
+    if new_owner is not None and new_owner not in member_ids:
+        raise HTTPException(400, "Not a member of this board")
+    if t.assigned_to_id != new_owner:
+        t.assigned_to_id = new_owner
+        t.scheduled_date, t.scheduled_start = None, None  # re-plan against the new owner's schedule
+        db.flush()
+        who = db.get(User, new_owner) if new_owner else None
+        task_service.log_activity(db, board, task_id=t.id, actor_id=user.id, action="assigned", summary=f"Assigned “{t.title}” to {who.display_name or who.username}" if who else f"Unassigned “{t.title}”")
+    if deps.is_htmx(request):
+        return _board_partial(request, db, board)
+    return deps.redirect(f"/boards/{board.slug}/")
 
 
 @router.post("/tasks/{task_id}/instructions", dependencies=[Depends(deps.csrf_protect)])
@@ -129,11 +185,11 @@ def schedule_rollover(request: Request, board: Board = Depends(deps.current_boar
 
 
 @router.post("/tasks/{task_id}/schedule", dependencies=[Depends(deps.csrf_protect)])
-def task_schedule(request: Request, task_id: str, scheduled_date: str = Form(""), board: Board = Depends(deps.current_board_editor), user: User = Depends(deps.get_current_user), db: Session = Depends(get_db)):
+def task_schedule(request: Request, task_id: str, scheduled_date: str = Form(""), scheduled_start: str = Form(""), board: Board = Depends(deps.current_board_editor), user: User = Depends(deps.get_current_user), db: Session = Depends(get_db)):
     t = task_service.get_task(db, board, task_id)
     if t is None:
         raise HTTPException(404, "Task not found")
-    task_service.update_task(db, board, t, {"scheduled_date": scheduled_date or None}, actor_id=user.id)
+    task_service.update_task(db, board, t, {"scheduled_date": scheduled_date or None, "scheduled_start": scheduled_start or None}, actor_id=user.id)
     if deps.is_htmx(request):
         return _board_partial(request, db, board)
     return deps.redirect(request.headers.get("referer") or f"/boards/{board.slug}/schedule")

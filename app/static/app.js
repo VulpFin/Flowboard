@@ -51,6 +51,10 @@
   function saveSet(kind, set) {
     try { localStorage.setItem(storeKey(kind), JSON.stringify(Array.from(set))); } catch (e) {}
   }
+  function isNarrow() {
+    return window.matchMedia('(max-width: 700px)').matches;
+  }
+
   function initCollapse() {
     const board = document.getElementById('board');
     if (!board || board._collapse_init) return;
@@ -59,6 +63,18 @@
     const expanded = loadSet('cards');
     const forceExpand = board.dataset.expand;
     if (forceExpand) { expanded.add(forceExpand); saveSet('cards', expanded); }
+    // On a phone the board is one column per list, so start with only the first
+    // list open.  Done once per board; after that the user's choice sticks.
+    if (isNarrow()) {
+      const flag = 'fb:mobileinit:' + boardSlug();
+      let seen = true;
+      try { seen = !!localStorage.getItem(flag); } catch (e) {}
+      if (!seen) {
+        Array.from(board.querySelectorAll('.col')).slice(1).forEach(function (col) { collapsed.add(col.dataset.context); });
+        saveSet('cols', collapsed);
+        try { localStorage.setItem(flag, '1'); } catch (e) {}
+      }
+    }
     board.querySelectorAll('.col').forEach(function (col) {
       const ctx = col.dataset.context;
       if (collapsed.has(ctx)) col.classList.add('collapsed');
@@ -101,10 +117,10 @@
     }
   }
 
-  // --- reflection modal: Esc closes (= skip) ------------------------------
+  // --- reflection modal / nudge: Esc closes (= skip) ----------------------
   document.addEventListener('keydown', function (e) {
     if (e.key !== 'Escape') return;
-    const m = document.querySelector('.reflectmodal');
+    const m = document.querySelector('.reflectmodal, .reflectnudge');
     if (m) { const skip = m.querySelector('button[name=skip]'); if (skip) skip.click(); }
   });
   function initFlashes() {
@@ -114,6 +130,9 @@
   }
 
   // --- focus mode -------------------------------------------------------
+  // When the timer stops we already know how long the task took, so we ask
+  // "mark done?" right there and hand the elapsed minutes to the reflection
+  // instead of asking the user to type a number into a prompt().
   let modal;
   function ensureModal() {
     if (modal) return modal;
@@ -121,7 +140,7 @@
     modal.id = 'focus-modal';
     modal.className = 'focusmodal';
     modal.style.display = 'none';
-    modal.innerHTML = '<div class="focuscard"><h3 id="focus-title"></h3><p>Timer: <span id="focus-remaining"></span></p><button id="focus-stop">Stop</button></div>';
+    modal.innerHTML = '<div class="focuscard"><h3 id="focus-title"></h3><div id="focus-body"></div></div>';
     document.body.appendChild(modal);
     return modal;
   }
@@ -133,27 +152,50 @@
         const m = ensureModal();
         const est = parseInt(btn.dataset.est || '25', 10) * 60;
         const taskId = btn.dataset.id;
-        const endTs = Date.now() + est * 1000;
-        m.querySelector('#focus-title').textContent = btn.dataset.title;
+        const title = btn.dataset.title;
+        const startTs = Date.now();
+        const endTs = startTs + est * 1000;
+        const body = m.querySelector('#focus-body');
+        m.querySelector('#focus-title').textContent = title;
         m.style.display = 'flex';
-        const remain = m.querySelector('#focus-remaining');
         let timer = null;
-        function finish() {
+
+        function elapsedMinutes() {
+          return Math.max(1, Math.round((Date.now() - startTs) / 60000));
+        }
+        function close() {
           clearInterval(timer);
-          const actual = prompt('How many minutes did this actually take?', '');
           m.style.display = 'none';
-          const n = parseInt(actual || '0', 10);
-          if (!n) return;
-          postJSON('/boards/' + boardSlug() + '/tasks/' + taskId + '/actual', { actual_min: n }).then(swapBoard);
+        }
+        function askDone() {
+          clearInterval(timer);
+          const mins = elapsedMinutes();
+          body.innerHTML =
+            '<p>You focused for about <b>' + mins + ' min</b>.</p>' +
+            '<p>Mark this task as done?</p>' +
+            '<div class="row"><button id="focus-done" class="btn primary">Yes, mark done</button>' +
+            '<button id="focus-close" class="btn">No, just close</button></div>';
+          body.querySelector('#focus-close').onclick = close;
+          body.querySelector('#focus-done').onclick = function () {
+            close();
+            // htmx (not fetch) so the out-of-band reflection slot is swapped too
+            htmx.ajax('POST', '/boards/' + boardSlug() + '/tasks/' + taskId + '/done', {
+              target: '#board', swap: 'outerHTML',
+              values: { actual_min: mins },
+              headers: { 'X-CSRF-Token': csrf },
+            });
+          };
         }
         function tick() {
           const s = Math.max(0, Math.floor((endTs - Date.now()) / 1000));
-          remain.textContent = Math.floor(s / 60) + 'm ' + (s % 60) + 's';
-          if (s <= 0) finish();
+          const remain = body.querySelector('#focus-remaining');
+          if (remain) remain.textContent = Math.floor(s / 60) + 'm ' + (s % 60) + 's';
+          if (s <= 0) askDone();
         }
+        body.innerHTML = '<p>Timer: <span id="focus-remaining"></span></p><div class="row"><button id="focus-stop" class="btn">Stop</button></div>';
+        body.querySelector('#focus-stop').onclick = askDone;
         tick();
         timer = setInterval(tick, 1000);
-        m.querySelector('#focus-stop').onclick = finish;
       });
     });
   }
@@ -211,12 +253,33 @@
     }
   }
 
+  // --- small screens ----------------------------------------------------
+  function initMobile() {
+    // the topbar's page links collapse behind a ☰ button
+    const toggle = document.querySelector('.menutoggle');
+    const extra = document.querySelector('.topextra');
+    if (toggle && extra && !toggle._init) {
+      toggle._init = true;
+      toggle.addEventListener('click', function () {
+        const open = extra.classList.toggle('open');
+        toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+      });
+    }
+    // the add-task form starts folded away on a phone
+    const add = document.getElementById('addtask');
+    if (add && !add._init) {
+      add._init = true;
+      if (isNarrow()) add.open = false;
+    }
+  }
+
   function init() {
     initSortable();
     initCollapse();
     initFocus();
     initAssistant();
     initFlashes();
+    initMobile();
   }
   document.addEventListener('DOMContentLoaded', init);
   document.body.addEventListener('htmx:afterSwap', init);

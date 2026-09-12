@@ -34,6 +34,10 @@ class CalendarConnection(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     status: Mapped[str] = mapped_column(String(16), default="connected", nullable=False)  # connected|error|revoked
     status_message: Mapped[str] = mapped_column(String(300), default="", nullable=False)
     last_used_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    # Busy-time (free/busy) capacity subtraction
+    busy_enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    busy_cache_json: Mapped[str] = mapped_column(Text, default="{}", nullable=False)  # {"from":..,"to":..,"intervals":[[iso,iso]..]}
+    busy_fetched_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
 
 class CalendarEventLink(UUIDPrimaryKeyMixin, TimestampMixin, Base):

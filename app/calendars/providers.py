@@ -23,7 +23,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import secrets
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 from urllib.parse import urlencode
 
@@ -36,6 +36,14 @@ class CalendarProviderError(Exception):
     def __init__(self, message: str, *, reauth: bool = False):
         super().__init__(message)
         self.reauth = reauth
+
+
+def _rfc3339(dt: datetime) -> str:
+    """UTC RFC3339 timestamp ("2026-09-12T00:00:00Z") for provider queries.
+    Naive datetimes are assumed to already be UTC."""
+    if dt.tzinfo is not None:
+        dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
+    return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def pkce_pair() -> (str, str):
@@ -71,6 +79,11 @@ class CalendarProvider:
     @property
     def redirect_uri(self) -> str:
         return settings.absolute_url(f"/calendar/connect/{self.id}/callback")
+
+    def free_busy(self, token: Dict[str, Any], calendar_id: str, start: datetime, end: datetime) -> List[tuple]:
+        """[(start_utc, end_utc)] the account is busy in.  Used to subtract
+        meetings from the daily capacity; providers that cannot answer return []."""
+        return []
 
     # token helpers
     @staticmethod
@@ -173,6 +186,19 @@ class GoogleCalendarProvider(CalendarProvider):
         if resp.status_code not in (204, 200, 404, 410):
             _check(resp, "Google delete event")
 
+    def free_busy(self, token, calendar_id, start: datetime, end: datetime) -> List[tuple]:
+        from .busy import parse_dt
+
+        body = {"timeMin": _rfc3339(start), "timeMax": _rfc3339(end), "items": [{"id": calendar_id or "primary"}]}
+        data = _check(self.http.post(f"{self.api}/freeBusy", headers=self._h(token), json=body), "Google free/busy")
+        out = []
+        for cal in (data.get("calendars") or {}).values():
+            for slot in cal.get("busy") or []:
+                s, e = parse_dt(slot.get("start")), parse_dt(slot.get("end"))
+                if s and e:
+                    out.append((s, e))
+        return out
+
 
 # --------------------------------------------------------------------------
 class MicrosoftCalendarProvider(CalendarProvider):
@@ -251,6 +277,28 @@ class MicrosoftCalendarProvider(CalendarProvider):
         resp = self.http.delete(f"{self.api}/me/events/{event_id}", headers=self._h(token))
         if resp.status_code not in (204, 200, 404):
             _check(resp, "Microsoft delete event")
+
+    def free_busy(self, token, calendar_id, start: datetime, end: datetime) -> List[tuple]:
+        """`calendarView` over the horizon (same scope we already hold).  Events
+        the user is free for, and all-day events, do not reduce capacity."""
+        from .busy import parse_dt
+
+        headers = dict(self._h(token))
+        headers["Prefer"] = 'outlook.timezone="UTC"'
+        params = {
+            "startDateTime": _rfc3339(start), "endDateTime": _rfc3339(end),
+            "$select": "start,end,isAllDay,showAs,subject", "$top": "250", "$orderby": "start/dateTime",
+        }
+        path = f"{self.api}/me/calendars/{calendar_id}/calendarView" if calendar_id else f"{self.api}/me/calendarView"
+        data = _check(self.http.get(path, headers=headers, params=params), "Microsoft calendar view")
+        out = []
+        for ev in data.get("value") or []:
+            if ev.get("isAllDay") or (ev.get("showAs") or "busy") in ("free", "workingElsewhere"):
+                continue
+            s, e = parse_dt((ev.get("start") or {}).get("dateTime")), parse_dt((ev.get("end") or {}).get("dateTime"))
+            if s and e:
+                out.append((s, e))
+        return out
 
 
 CALENDAR_PROVIDERS: Dict[str, type] = {"google": GoogleCalendarProvider, "microsoft": MicrosoftCalendarProvider}

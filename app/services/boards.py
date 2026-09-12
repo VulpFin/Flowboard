@@ -141,6 +141,25 @@ def update_board(db: Session, board: Board, **fields) -> Board:
     return board
 
 
+def member_list(db: Session, board: Board) -> List[Dict]:
+    """[{id, name, role, user}] for the board, owner first.  Used by the
+    assignee picker and the "who has room this week" panel."""
+    rank = {BoardRole.OWNER.value: 0, BoardRole.ADMIN.value: 1, BoardRole.EDITOR.value: 2, BoardRole.VIEWER.value: 3}
+    out: List[Dict] = []
+    for m in sorted(board.memberships, key=lambda m: (rank.get(m.role, 9), m.created_at or "")):
+        if not m.accepted:
+            continue
+        u = db.get(User, m.user_id)
+        if u is None:
+            continue
+        out.append({"id": u.id, "name": u.display_name or u.username, "role": m.role, "user": u})
+    return out
+
+
+def member_names(db: Session, board: Board) -> Dict[str, str]:
+    return {m["id"]: m["name"] for m in member_list(db, board)}
+
+
 def board_settings(board: Board) -> Dict:
     try:
         return json.loads(board.settings_json or "{}")

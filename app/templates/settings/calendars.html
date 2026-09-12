@@ -11,6 +11,12 @@
       <label>Target calendar <select name="calendar_id">{% for cal in cached.get(c.id, []) %}<option value="{{ cal.id }}" {% if cal.id == c.target_calendar_id %}selected{% endif %}>{{ cal.name }}{% if cal.primary %} (primary){% endif %}</option>{% endfor %}</select></label>
       <button type="submit">Save</button>
     </form>
+    <form method="post" action="/calendar/connections/{{ c.id }}/busy" class="row">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <label class="check" title="Busy time in this calendar is subtracted from your daily limit in Settings → Schedule"><input type="checkbox" name="busy_enabled" {% if c.busy_enabled %}checked{% endif %}> Subtract this calendar's meetings from my daily capacity</label>
+      <button class="mini">Save</button>
+      {% if c.busy_fetched_at %}<span class="muted small">busy times cached {{ c.busy_fetched_at.strftime('%H:%M') }} UTC</span>{% endif %}
+    </form>
     <div class="row">
       <form method="post" action="/calendar/connections/{{ c.id }}/refresh"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button>Refresh calendars</button></form>
       <form method="post" action="/calendar/connections/{{ c.id }}/disconnect" onsubmit="return confirm('Disconnect {{ c.provider }}? Existing events stay in your calendar.')"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="danger">Disconnect</button></form>

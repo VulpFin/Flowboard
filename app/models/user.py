@@ -76,6 +76,9 @@ class UserProfile(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     calibration_json: Mapped[str] = mapped_column(Text, default="{}", nullable=False)
     tutorial_seeded: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     tg11_vault_synced_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    # Morning digest: {"enabled": true, "hour": 7, "boards": ["<id>"], "only_if_due": false,
+    #                  "channels": ["email"], "last_sent_on": "2026-09-12"}
+    digest_json: Mapped[str] = mapped_column(Text, default="{}", nullable=False)
 
     user: Mapped["User"] = relationship(back_populates="profile")
 

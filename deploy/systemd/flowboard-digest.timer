@@ -1,0 +1,11 @@
+[Unit]
+Description=Run the Flowboard morning digest check every 15 minutes
+
+[Timer]
+OnCalendar=*:0/15
+Persistent=true
+RandomizedDelaySec=60
+Unit=flowboard-digest.service
+
+[Install]
+WantedBy=timers.target

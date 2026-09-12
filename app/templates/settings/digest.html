@@ -1,0 +1,40 @@
+{% extends "settings/_layout.html" %}
+{% block settings %}
+<h2>Morning digest</h2>
+<p class="muted">One email each morning: what you have scheduled, what is overdue, how much capacity is left after meetings, and the best task to start with. It goes out at your local time.</p>
+{% if not smtp_configured %}<div class="flash bad">This server has no SMTP configured yet, so digests can be previewed but not delivered.</div>{% endif %}
+<section class="panel">
+<form method="post" action="/settings/digest" class="stack">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <label class="check"><input type="checkbox" name="enabled" {% if digest.enabled %}checked{% endif %}> Send me a morning digest</label>
+  <div class="row">
+    <label>At (local time) <select name="hour">{% for h in range(24) %}<option value="{{ h }}" {% if digest.hour == h %}selected{% endif %}>{{ '%02d:00'|format(h) }}</option>{% endfor %}</select></label>
+    <label>My timezone <input name="timezone" value="{{ timezone }}" placeholder="America/New_York" title="IANA timezone name; shared with the rest of your account"></label>
+  </div>
+  <label>Boards to include <span class="muted small">(none selected = all of them)</span>
+    <span class="row wrapcols">
+      {% for b in all_boards %}
+      <label class="check"><input type="checkbox" name="boards" value="{{ b.id }}" {% if b.id in digest.boards %}checked{% endif %}> {{ b.icon }} {{ b.name }}</label>
+      {% endfor %}
+    </span>
+  </label>
+  <label class="check"><input type="checkbox" name="only_if_due" {% if digest.only_if_due %}checked{% endif %}> Only when something is scheduled, due or overdue</label>
+  <div class="row">
+    {% for c in channels %}
+    <label class="check"><input type="checkbox" name="channel_{{ c }}" {% if c in digest.channels %}checked{% endif %}> {{ c|capitalize }}</label>
+    {% endfor %}
+    <span class="muted small">More channels (web push) can be added without changing your settings.</span>
+  </div>
+  <p class="muted small">
+    {% if ai_model %}Your own provider ({{ ai_model }}) writes the briefing; if it is unavailable you still get the plain digest.
+    {% else %}No AI provider configured — you will get the plain digest. <a href="/settings/ai-providers">Add a provider</a> to have it written for you.{% endif %}
+    {% if digest.last_sent_on %}<br>Last digest sent {{ digest.last_sent_on }}.{% endif %}
+  </p>
+  <div class="row">
+    <button type="submit" class="btn primary">Save</button>
+    <button type="button" class="btn" hx-post="/settings/digest/preview" hx-target="#digest-preview" hx-swap="innerHTML" title="Build today's digest without sending it">Preview today's digest</button>
+  </div>
+</form>
+<div id="digest-preview"></div>
+</section>
+{% endblock %}
