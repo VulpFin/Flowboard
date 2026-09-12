@@ -189,3 +189,32 @@ def test_tg11_vault_import(db, alice):
     cred = cred_service.get_credential(db, alice, "anthropic")
     assert cred is not None and cred.label == "from TG11 vault"
     assert alice.profile.tg11_vault_synced_at is not None
+
+
+def test_tg11_vault_push(db, alice, client, monkeypatch):
+    from app.identity import tg11_api
+    from app.ai import credentials as cred_service
+    from app.config import settings as cfg
+
+    cred_service.upsert_credential(db, alice, "groq", secrets={"api_key": "gsk-1"}, config={"base_url": ""}, label="")
+    cred_service.upsert_credential(db, alice, "openai", secrets={"api_key": "sk-2"}, config={}, label="work")
+    items = tg11_api.export_for_push(db, alice, ["openai"])
+    assert items == [{"provider": "openai", "label": "work", "secrets": {"api_key": "sk-2"}, "config": {}}]
+    assert {i["provider"] for i in tg11_api.export_for_push(db, alice)} == {"groq", "openai"}
+    seen = {}
+
+    def responder(request):
+        seen["body"] = json.loads(request.content); seen["auth"] = request.headers.get("authorization")
+        assert request.method == "PUT" and request.url.path == "/api/v1/ai/credentials"
+        return httpx.Response(200, json={"ok": True, "written": ["groq", "openai"], "skipped": [], "removed": []})
+
+    monkeypatch.setattr(cfg, "TG11_OIDC_ISSUER", "https://accounts.test")
+    monkeypatch.setattr(cfg, "TG11_OIDC_CLIENT_ID", "flowboard")
+    res = tg11_api.push_vault("tok", items, http=httpx.Client(transport=httpx.MockTransport(responder)))
+    assert res["ok"] and seen["auth"] == "Bearer tok" and seen["body"]["credentials"][0]["secrets"]["api_key"] == "sk-2"
+    assert tg11_api.push_vault("", items)["ok"] is False
+    db.commit()
+    client.login("alice@example.com")
+    assert client.get("/settings/ai-providers").status_code == 200
+    r = client.get("/auth/tg11/login?push=openai", follow_redirects=False)  # discovery against accounts.test fails -> graceful error redirect
+    assert r.status_code == 303 and ("accounts.test/" in r.headers["location"] or "err=" in r.headers["location"])

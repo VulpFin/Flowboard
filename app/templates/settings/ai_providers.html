@@ -8,7 +8,16 @@
     <b>TG11 key vault</b>
     <div class="muted small">Keys saved in your <a href="{{ tg11_issuer }}/vault" target="_blank" rel="noopener">TG11 account vault</a> can be copied here so every TG11 app shares one set of keys.{% if user.profile.tg11_vault_synced_at %} Last synced {{ user.profile.tg11_vault_synced_at.strftime('%Y-%m-%d %H:%M') }}.{% endif %}</div>
   </div>
-  <a class="btn" href="/auth/tg11/login?sync=1" title="Signs you in at TG11 (asks for the tg11.ai permission) and imports the keys">Sync from TG11</a>
+  <div class="stack">
+    <a class="btn" href="/auth/tg11/login?sync=1" title="Signs you in at TG11 (asks for the tg11.ai permission) and copies vault keys here — overwrites the same providers in Flowboard">⬇ Pull from TG11</a>
+    <form method="get" action="/auth/tg11/login" class="row" title="Copies the selected Flowboard keys into your TG11 vault — overwrites the same providers there">
+      <select name="push" class="mini">
+        <option value="*">all configured providers</option>
+        {% for r in rows if r.cred %}<option value="{{ r.spec.id }}">{{ r.spec.name }}</option>{% endfor %}
+      </select>
+      <button class="btn">⬆ Push to TG11</button>
+    </form>
+  </div>
 </div>
 {% endif %}
 <table class="table providers">

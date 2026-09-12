@@ -71,7 +71,10 @@ class OIDCClient:
     @property
     def metadata(self) -> Dict[str, Any]:
         if self._metadata is None:
-            resp = self.http.get(f"{self.issuer}/.well-known/openid-configuration")
+            try:
+                resp = self.http.get(f"{self.issuer}/.well-known/openid-configuration")
+            except httpx.HTTPError as exc:
+                raise OIDCError(f"TG11 is unreachable ({exc.__class__.__name__})")
             if resp.status_code != 200:
                 raise OIDCError(f"discovery failed ({resp.status_code})")
             md = resp.json()
@@ -82,7 +85,10 @@ class OIDCClient:
 
     def jwks(self, force: bool = False) -> Dict[str, Any]:
         if self._jwks is None or force or time.time() - self._jwks_fetched > 3600:
-            resp = self.http.get(self.metadata["jwks_uri"])
+            try:
+                resp = self.http.get(self.metadata["jwks_uri"])
+            except httpx.HTTPError as exc:
+                raise OIDCError(f"could not fetch JWKS ({exc.__class__.__name__})")
             if resp.status_code != 200:
                 raise OIDCError("could not fetch JWKS")
             self._jwks = resp.json()
@@ -115,7 +121,10 @@ class OIDCClient:
     def exchange(self, code: str, flow: Dict[str, str]) -> OIDCClaims:
         data = {"grant_type": "authorization_code", "code": code, "redirect_uri": self.redirect_uri, "client_id": self.client_id, "code_verifier": flow["code_verifier"]}
         auth = (self.client_id, self.client_secret) if self.client_secret else None
-        resp = self.http.post(self.metadata["token_endpoint"], data=data, auth=auth)
+        try:
+            resp = self.http.post(self.metadata["token_endpoint"], data=data, auth=auth)
+        except httpx.HTTPError as exc:
+            raise OIDCError(f"token exchange failed ({exc.__class__.__name__})")
         if resp.status_code != 200:
             raise OIDCError(f"token exchange failed ({resp.status_code}): {resp.text[:200]}")
         tokens = resp.json()

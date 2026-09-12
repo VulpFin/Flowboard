@@ -127,7 +127,7 @@ def reset_submit(request: Request, token: str, password: str = Form(...), passwo
 # --- TG11 OIDC -----------------------------------------------------------
 
 @router.get("/auth/tg11/login")
-def tg11_login(request: Request, next: str = "/", link: int = 0, sync: int = 0):
+def tg11_login(request: Request, next: str = "/", link: int = 0, sync: int = 0, push: str = ""):
     if not settings.oidc_configured:
         return deps.redirect("/login?err=TG11+sign-in+is+not+configured")
     try:
@@ -136,6 +136,7 @@ def tg11_login(request: Request, next: str = "/", link: int = 0, sync: int = 0):
         flow["next"] = _safe_next(next)
         flow["link"] = "1" if link else "0"
         flow["sync"] = "1" if sync else "0"
+        flow["push"] = push[:400] if push else ""  # comma-separated provider ids, or "*" for all
         url = client.authorization_url(flow)
     except OIDCError as exc:
         return deps.redirect(f"/login?err=TG11+sign-in+unavailable:+{exc}")
@@ -169,6 +170,16 @@ def tg11_callback(request: Request, code: Optional[str] = None, state: Optional[
         return f"+({len(res['imported'])}+AI+key(s)+synced+from+TG11)" if res["imported"] else ""
 
     try:
+        if flow.get("push") and current is not None:
+            if current.tg11_user_id and current.tg11_user_id != claims.subject:
+                return deps.redirect("/settings/ai-providers?err=Signed+in+to+a+different+TG11+account+than+the+one+linked+here")
+            if "tg11.ai" not in (claims.scope or "").split():
+                return deps.redirect("/settings/ai-providers?err=TG11+did+not+grant+the+tg11.ai+permission")
+            sel = None if flow["push"] == "*" else [p for p in flow["push"].split(",") if p]
+            res = tg11_api.push_selected(db, current, claims.access_token, sel)
+            resp = deps.redirect("/settings/ai-providers?msg=Pushed+to+TG11:+" + "+".join(res["written"]) + ("+(skipped:+" + "+".join(res["skipped"]) + ")" if res.get("skipped") else "") if res.get("ok") else f"/settings/ai-providers?err=Push+failed:+{res.get('error')}")
+            resp.delete_cookie(FLOW_COOKIE, path="/auth/tg11")
+            return resp
         if flow.get("sync") == "1" and current is not None:
             if current.tg11_user_id and current.tg11_user_id != claims.subject:
                 return deps.redirect("/settings/ai-providers?err=Signed+in+to+a+different+TG11+account+than+the+one+linked+here")

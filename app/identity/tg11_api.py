@@ -36,6 +36,39 @@ def fetch_vault(access_token: str, http: Optional[httpx.Client] = None) -> List[
     return list(data.get("credentials") or []) if isinstance(data, dict) else []
 
 
+def push_vault(access_token: str, items: List[Dict[str, Any]], *, replace: bool = False, http: Optional[httpx.Client] = None) -> Dict[str, Any]:
+    """Write keys into the user's TG11 vault (PUT /api/v1/ai/credentials)."""
+    if not access_token or not settings.oidc_configured:
+        return {"ok": False, "error": "not configured"}
+    client = http or httpx.Client(timeout=TIMEOUT)
+    try:
+        r = client.put(f"{_base()}/api/v1/ai/credentials", json={"credentials": items, "replace": replace}, headers={"Authorization": f"Bearer {access_token}"})
+    except httpx.HTTPError as exc:
+        return {"ok": False, "error": str(exc)}
+    if r.status_code != 200:
+        return {"ok": False, "error": f"TG11 answered {r.status_code}: {r.text[:200]}"}
+    data = r.json()
+    return {"ok": True, "written": data.get("written") or [], "skipped": data.get("skipped") or [], "removed": data.get("removed") or []}
+
+
+def export_for_push(db: Session, user: User, providers: Optional[List[str]] = None) -> List[Dict[str, Any]]:
+    """Decrypt this user's Flowboard credentials into the vault wire format."""
+    from ..ai import credentials as cred_service
+
+    out = []
+    for cred in cred_service.list_credentials(db, user):
+        if providers is not None and cred.provider not in providers:
+            continue
+        try:
+            secrets = cred_service.decrypt_secrets(cred)
+        except Exception:
+            continue
+        if not any(secrets.values()):
+            continue
+        out.append({"provider": cred.provider, "label": cred.label or "from Flowboard", "secrets": secrets, "config": cred_service.config_of(cred)})
+    return out
+
+
 def register_link(sub: str, legacy_id: str, *, source: str = "oidc_login", http: Optional[httpx.Client] = None) -> bool:
     if not settings.oidc_configured or not settings.TG11_OIDC_CLIENT_SECRET:
         return False
@@ -70,3 +103,14 @@ def import_vault(db: Session, user: User, creds: List[Dict[str, Any]]) -> Dict[s
         user.profile.tg11_vault_synced_at = utcnow()
     db.flush()
     return {"imported": imported, "skipped": skipped}
+
+
+def push_selected(db: Session, user: User, access_token: str, providers: Optional[List[str]] = None) -> Dict[str, Any]:
+    items = export_for_push(db, user, providers)
+    if not items:
+        return {"ok": False, "error": "no keys to push"}
+    res = push_vault(access_token, items)
+    if res.get("ok") and user.profile is not None:
+        user.profile.tg11_vault_synced_at = utcnow()
+        db.flush()
+    return res
