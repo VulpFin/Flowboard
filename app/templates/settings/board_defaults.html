@@ -1,0 +1,19 @@
+{% extends "settings/_layout.html" %}
+{% block settings %}
+<h2>Board defaults</h2>
+<p class="muted">Applied to boards you create from now on. Each board can override these in its own settings.</p>
+<section class="panel">
+<form method="post" action="/settings/board-defaults" class="stack">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <label>AI model for new boards
+    <select name="ai_model" class="modelselect"><option value="">Inherit account default</option>
+    {% for p in model_groups %}<optgroup label="{{ p.provider_name }}">{% for g in p.groups %}{% for m in g.models %}<option value="{{ m.ref }}" {% if defaults.get('ai_model') == m.ref %}selected{% endif %}>{{ g.family }} · {{ m.name }}</option>{% endfor %}{% endfor %}</optgroup>{% endfor %}
+    </select></label>
+  <div class="row">
+    <label>Default context <input name="default_context" value="{{ defaults.get('default_context', '') }}" placeholder="General"></label>
+    <label>Default estimate (min) <input name="default_estimate_min" type="number" min="1" max="1440" value="{{ defaults.get('default_estimate_min', 30) }}"></label>
+  </div>
+  <button type="submit" class="btn primary">Save</button>
+</form>
+</section>
+{% endblock %}

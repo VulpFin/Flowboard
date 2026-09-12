@@ -1,0 +1,7 @@
+{% if result is defined %}
+<div class="flash {{ 'ok' if result.ok else 'bad' }}">{{ result.message }}</div>
+{% endif %}
+<p class="small">Validation: <span class="tag {{ 'ok' if cred.validation_status == 'valid' else ('bad' if cred.validation_status in ('invalid','error') else '') }}">{{ cred.validation_status }}</span>
+{% if cred.validation_message %}· {{ cred.validation_message }}{% endif %}
+{% if cred.last_validated_at %}· last checked {{ cred.last_validated_at.strftime('%Y-%m-%d %H:%M') }} UTC{% endif %}
+· {{ 'enabled' if cred.enabled else 'disabled' }}</p>

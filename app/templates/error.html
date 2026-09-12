@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}{{ status }} · {{ site_name }}{% endblock %}
+{% block content %}
+<section class="panel narrow">
+  <h2>{{ status }}</h2>
+  <p>{{ detail }}</p>
+  <p><a class="linkbtn" href="/">Back to your board</a></p>
+</section>
+{% endblock %}

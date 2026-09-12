@@ -1,0 +1,45 @@
+{% extends "settings/_layout.html" %}
+{% block settings %}
+<h2>Calendars & integrations</h2>
+<section class="panel">
+  <h3>Connected accounts</h3>
+  {% for c in connections %}
+  <div class="conn">
+    <b>{{ c.provider|capitalize }}</b> · {{ c.account_email }} · <span class="tag {{ 'ok' if c.status == 'connected' else 'bad' }}">{{ c.status }}</span>{% if c.status_message %} <span class="muted small">{{ c.status_message }}</span>{% endif %}
+    <form method="post" action="/calendar/connections/{{ c.id }}/target" class="row">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <label>Target calendar <select name="calendar_id">{% for cal in cached.get(c.id, []) %}<option value="{{ cal.id }}" {% if cal.id == c.target_calendar_id %}selected{% endif %}>{{ cal.name }}{% if cal.primary %} (primary){% endif %}</option>{% endfor %}</select></label>
+      <button type="submit">Save</button>
+    </form>
+    <div class="row">
+      <form method="post" action="/calendar/connections/{{ c.id }}/refresh"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button>Refresh calendars</button></form>
+      <form method="post" action="/calendar/connections/{{ c.id }}/disconnect" onsubmit="return confirm('Disconnect {{ c.provider }}? Existing events stay in your calendar.')"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="danger">Disconnect</button></form>
+    </div>
+  </div>
+  {% else %}<p class="muted">No calendar accounts connected.</p>{% endfor %}
+  <h4>Connect</h4>
+  <div class="row">
+  {% for p in providers %}
+    {% if p.configured %}<a class="btn primary" href="/calendar/connect/{{ p.id }}">Connect {{ p.name }}</a>{% else %}<span class="btn disabled" title="Set the OAuth client id/secret in the server .env to enable">{{ p.name }} (not configured on server)</span>{% endif %}
+  {% endfor %}
+  </div>
+  <p class="muted small">Flowboard asks only for calendar event access (plus your email to label the account). Tokens are encrypted at rest. Sync is one-way: Flowboard → calendar; events you add with “+ Calendar” are updated when the task changes and removed if you delete the task.</p>
+</section>
+<section class="panel">
+  <h3>Subscription feeds (Apple Calendar, Outlook, Thunderbird, Google “from URL”)</h3>
+  <p class="muted small">Each feed URL contains a long random secret. Anyone with the URL can read that board's dated tasks, so treat it like a password; rotate it if it leaks.</p>
+  {% for bf in board_feeds %}
+  <div class="conn" id="feed-{{ bf.board.id }}">
+    <b>{{ bf.board.icon }} {{ bf.board.name }}</b>
+    {% if bf.feed and not bf.feed.revoked_at %}
+      <span class="tag ok">active</span> <span class="muted small">token {{ bf.feed.token_prefix }}… · created {{ bf.feed.created_at.strftime('%Y-%m-%d') }}{% if bf.feed.last_fetched_at %} · last fetched {{ bf.feed.last_fetched_at.strftime('%Y-%m-%d %H:%M') }}{% endif %}</span>
+    {% else %}<span class="muted small">no feed</span>{% endif %}
+    <div class="row">
+      <form hx-post="/boards/{{ bf.board.slug }}/feed/rotate" hx-target="#feed-{{ bf.board.id }}" hx-swap="outerHTML"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><label class="check"><input type="checkbox" name="include_done"> include completed</label> <button>{{ 'Rotate secret' if bf.feed and not bf.feed.revoked_at else 'Create feed' }}</button></form>
+      {% if bf.feed and not bf.feed.revoked_at %}<form method="post" action="/boards/{{ bf.board.slug }}/feed/revoke"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="danger">Revoke</button></form>{% endif %}
+      <a class="btn-link" href="/boards/{{ bf.board.slug }}/export.ics">Download .ics once</a>
+    </div>
+  </div>
+  {% endfor %}
+</section>
+{% endblock %}

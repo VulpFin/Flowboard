@@ -1,0 +1,6 @@
+<article class="changeset status-error">
+  <div class="cs-q muted small">You: {{ prompt }}</div>
+  <div class="flash bad">{{ error }}
+    {% if kind in ('auth', 'credits', 'not_configured') %} <a href="/settings/ai-providers">Open AI providers</a>{% endif %}
+  </div>
+</article>

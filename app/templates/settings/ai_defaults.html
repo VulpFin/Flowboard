@@ -1,0 +1,27 @@
+{% extends "settings/_layout.html" %}
+{% block settings %}
+<h2>AI defaults</h2>
+<p class="muted">Inheritance: board override → these account defaults → the first enabled provider's default model. Flowboard never uses an operator-owned key.</p>
+<section class="panel">
+<form method="post" action="/settings/ai-defaults" class="stack">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <label>Default model
+    <select name="default_ai_model" class="modelselect">
+      <option value="">— first enabled provider's default —</option>
+      {% for p in model_groups %}<optgroup label="{{ p.provider_name }}">{% for g in p.groups %}{% for m in g.models %}<option value="{{ m.ref }}" {% if user.profile.default_ai_model == m.ref %}selected{% endif %}>{{ g.family }} · {{ m.name }}{% if m.tags %} ({{ m.tags|join(', ') }}){% endif %}</option>{% endfor %}{% endfor %}</optgroup>{% endfor %}
+    </select>
+  </label>
+  {% if not model_groups %}<p class="muted small">No enabled providers yet — <a href="/settings/ai-providers">add one</a>.</p>{% endif %}
+  <label class="check"><input type="checkbox" name="ai_fallback_enabled" {% if user.profile.ai_fallback_enabled %}checked{% endif %}> Enable fallback to a second model when the primary provider fails (rate limit, outage, credits). This can spend money on the fallback provider.</label>
+  <label>Fallback model
+    <select name="ai_fallback_model" class="modelselect">
+      <option value="">— none —</option>
+      {% for p in model_groups %}<optgroup label="{{ p.provider_name }}">{% for g in p.groups %}{% for m in g.models %}<option value="{{ m.ref }}" {% if user.profile.ai_fallback_model == m.ref %}selected{% endif %}>{{ g.family }} · {{ m.name }}</option>{% endfor %}{% endfor %}</optgroup>{% endfor %}
+    </select>
+  </label>
+  <label class="check"><input type="checkbox" name="ai_auto_tag_on_create" {% if user.profile.ai_auto_tag_on_create %}checked{% endif %}> Pre-tick “AI contexts” when adding tasks</label>
+  <label class="check"><input type="checkbox" name="ai_usage_tracking" {% if user.profile.ai_usage_tracking %}checked{% endif %}> Track AI usage (tokens, latency, estimated cost) — see <a href="/settings/ai-usage">AI Usage</a></label>
+  <button type="submit" class="btn primary">Save</button>
+</form>
+</section>
+{% endblock %}

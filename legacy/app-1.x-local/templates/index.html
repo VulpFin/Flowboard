@@ -1,0 +1,49 @@
+<!--
+ Copyright (C) 2025 TG11
+ 
+ This program is free software: you can redistribute it and/or modify
+ it under the terms of the GNU Affero General Public License as
+ published by the Free Software Foundation, either version 3 of the
+ License, or (at your option) any later version.
+ 
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU Affero General Public License for more details.
+ 
+ You should have received a copy of the GNU Affero General Public License
+ along with this program.  If not, see <https://www.gnu.org/licenses/>.
+-->
+
+{% extends "base.html" %}
+{% block content %}
+<section class="new-task">
+  <h2>Add Task</h2>
+  <form hx-post="/tasks" hx-target="#board" hx-swap="outerHTML">
+    <input name="title" placeholder="Title" required />
+    <input name="description" placeholder="Description" />
+    <input name="estimate_min" type="number" min="1" value="30" />
+    <select name="importance">
+      {% for i in [1,2,3,4,5] %}
+      <option value="{{i}}" {% if i==3 %}selected{% endif %}>Importance {{i}}</option>
+      {% endfor %}
+    </select>
+    <input name="due" placeholder="YYYY-MM-DD or YYYY-MM-DD HH:MM" />
+    <input name="energy" placeholder="low|medium|high" value="medium" />
+    <input name="depends_on" placeholder="Depends (IDs, space-separated)" />
+    <label><input type="checkbox" name="use_ai" checked /> AI-tag contexts</label>
+    <label style="margin-left:.5rem"><input type="checkbox" name="use_ai_fields" />AI-set estimate/importance/energy</label>
+
+    <button type="submit">Add</button>
+  </form>
+</section>
+
+<section id="board" class="board">
+  {% include "board_partial.html" %}
+</section>
+
+
+<section id="plan" class="plan">
+  {% include "plan_partial.html" ignore missing %}
+</section>
+{% endblock %}

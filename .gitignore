@@ -1,0 +1,17 @@
+.env
+.venv/
+venv/
+__pycache__/
+*.pyc
+data/
+*.sqlite3
+*.sqlite3-*
+.claude-bridge/
+.pytest_cache/
+node_modules/
+flowboard_ai_log.jsonl
+test*.vfdb*
+test__*.vfheap
+SSL/
+*.key
+*.pem

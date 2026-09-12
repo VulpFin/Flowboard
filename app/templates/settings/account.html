@@ -1,0 +1,24 @@
+{% extends "settings/_layout.html" %}
+{% block settings %}
+<h2>Account & profile</h2>
+<section class="panel">
+<form method="post" action="/settings/account" class="stack">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <div class="row">
+    <label>Display name <input name="display_name" value="{{ user.display_name }}"></label>
+    <label>Username <input name="username" value="{{ user.username }}" pattern="[a-z0-9_.]{3,30}"></label>
+  </div>
+  <label>Email <input name="email" type="email" value="{{ user.email }}"> {% if user.email_verified_at %}<span class="tag">verified</span>{% endif %}</label>
+  <div class="row">
+    <label>Default board <select name="default_board_id">{% for b in all_boards %}<option value="{{ b.id }}" {% if user.profile.default_board_id == b.id %}selected{% endif %}>{{ b.icon }} {{ b.name }}</option>{% endfor %}</select></label>
+    <label>Timezone <input name="timezone" value="{{ user.profile.timezone }}" placeholder="America/New_York"></label>
+    <label>Work day (min) <input name="work_day_minutes" type="number" min="15" max="1440" value="{{ user.profile.work_day_minutes }}"></label>
+  </div>
+  <button type="submit" class="btn primary">Save</button>
+</form>
+</section>
+<section class="panel">
+  <h3>Identity</h3>
+  <p class="muted small">Flowboard user id: <code>{{ user.id }}</code>{% if user.tg11_user_id %} · TG11 identity: <code>{{ user.tg11_user_id }}</code>{% else %} · not linked to a TG11 identity yet{% endif %}. Sign-in method and linking live under <a href="/settings/security">Security</a>.</p>
+</section>
+{% endblock %}

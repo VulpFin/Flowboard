@@ -1,0 +1,11 @@
+{% set idlist = plan | map(attribute='id') | join(',') %}
+<a id="ics-link" class="linkbtn" hx-swap-oob="outerHTML" href="/boards/{{ board.slug }}/plan.ics?ids={{ idlist|urlencode }}&window={{ window_used }}{% if start_context %}&start_context={{ start_context|urlencode }}{% endif %}" title="Export the current plan to your calendar">Plan .ics</a>
+{% if plan %}
+<h3>Best path forward</h3>
+<ol>
+  {% for item in plan %}<li>[{{ item.context }}] {{ item.title }} — {{ item.estimate_min }}m (imp {{ item.importance }}{% if item.due %}, due {{ item.due }}{% endif %})</li>{% endfor %}
+</ol>
+<p class="muted">Estimated total: {{ total }} min · Context switches: {{ switches }} · Window: {{ window_used }} min</p>
+{% else %}
+<p class="muted">No tasks to plan.</p>
+{% endif %}

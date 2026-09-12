@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Sign in · {{ site_name }}{% endblock %}
+{% block content %}
+<section class="panel narrow">
+  <h2>Sign in</h2>
+  {% if error %}<div class="flash bad">{{ error }}</div>{% endif %}
+  {% if oidc_enabled %}
+  <p><a class="btn primary wide" href="/auth/tg11/login?next={{ next|urlencode }}">{{ oidc_label }}</a></p>
+  {% if local_login_enabled %}<p class="muted center">or use your Flowboard password</p>{% endif %}
+  {% endif %}
+  {% if local_login_enabled %}
+  <form method="post" action="/login" class="stack">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="next" value="{{ next }}">
+    <label>Email or username <input name="identifier" value="{{ identifier or '' }}" required autofocus autocomplete="username"></label>
+    <label>Password <input name="password" type="password" required autocomplete="current-password"></label>
+    <button type="submit" class="btn primary">Sign in</button>
+  </form>
+  <p class="muted"><a href="/password/forgot">Forgot password?</a>{% if registration_enabled %} · <a href="/register">Create an account</a>{% endif %}</p>
+  {% endif %}
+</section>
+{% endblock %}

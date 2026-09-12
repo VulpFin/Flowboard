@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Boards · {{ site_name }}{% endblock %}
+{% block content %}
+<h2>Your boards</h2>
+<div class="grid">
+  {% for b in all_boards %}
+  <div class="panel boardcard {% if b.is_archived %}archived{% endif %}" style="{% if b.color %}border-top:4px solid {{ b.color }}{% endif %}">
+    <h3><a href="/boards/{{ b.slug }}/">{{ b.icon }} {{ b.name }}</a> {% if b.id == default_board_id %}<span class="tag">default</span>{% endif %}{% if b.is_archived %}<span class="tag">archived</span>{% endif %}</h3>
+    {% if b.description %}<p class="muted">{{ b.description }}</p>{% endif %}
+    <p class="muted small">{{ counts[b.id].open }} open · {{ counts[b.id].done }} done{% if counts[b.id].overdue %} · <b>{{ counts[b.id].overdue }} overdue</b>{% endif %}</p>
+    <div class="row">
+      {% if b.id != default_board_id and not b.is_archived %}<form method="post" action="/boards/{{ b.slug }}/make-default"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button>Make default</button></form>{% endif %}
+      {% if b.owner_id == user.id %}<a class="btn-link" href="/boards/{{ b.slug }}/settings">Settings</a>{% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+<section class="panel">
+  <h3>New board</h3>
+  <form method="post" action="/boards" class="row wrapcols">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input name="name" placeholder="Name (e.g. Work, TG11, Home)" required>
+    <input name="icon" placeholder="Icon / emoji" size="6">
+    <input name="color" type="color" value="#5cdfb7" title="Colour">
+    <input name="description" placeholder="Description (optional)">
+    <button type="submit" class="btn primary">Create</button>
+  </form>
+</section>
+{% endblock %}

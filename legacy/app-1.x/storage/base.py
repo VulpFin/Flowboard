@@ -1,0 +1,26 @@
+from dataclasses import dataclass
+from datetime import datetime
+
+@dataclass
+class Task:
+    id: str
+    title: str
+    notes: str = ""
+    context: str = "inbox"
+    tags: List[str] = None
+    estimate_min: int = 0
+    due: Optional[datetime] = None
+    done: bool = False
+    created_at: datetime = None
+    updated_at: datetime = None
+    priority: int = 0
+
+class Storage(Protocol):
+    def init(self) -> None: ...
+    def create_task(self, t: Task) -> Task: ...
+    def get_task(self, task_id: str) -> Optional[Task]: ...
+    def update_task(self, task_id: str, patch: Dict[str, Any]) -> Optional[Task]: ...
+    def delete_task(self, task_id: str) -> bool: ...
+    def list_tasks(self, ctx: Optional[str]=None, include_done: bool=False) -> Iterable[Task]: ...
+    def search(self, q: str, limit: int=100) -> List[Task]: ...
+    def vfql(self, q: str, limit: int=200) -> List[Task]: ...

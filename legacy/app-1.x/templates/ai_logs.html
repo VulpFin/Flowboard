@@ -1,0 +1,70 @@
+<!--
+ Copyright (C) 2025 TG11
+ 
+ This program is free software: you can redistribute it and/or modify
+ it under the terms of the GNU Affero General Public License as
+ published by the Free Software Foundation, either version 3 of the
+ License, or (at your option) any later version.
+ 
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU Affero General Public License for more details.
+ 
+ You should have received a copy of the GNU Affero General Public License
+ along with this program.  If not, see <https://www.gnu.org/licenses/>.
+-->
+
+{% extends "base.html" %}
+{% block content %}
+<h2>AI Logs</h2>
+<p class="muted">Local-only history of AI prompts and responses. Sensitive task details may appear here.</p>
+
+<div class="logwrap">
+  {% if entries %}
+    {% for e in entries|reverse %}
+      <details class="logitem">
+        <summary>
+          <span class="badge {{e.status}}">{{e.status}}</span>
+          <strong>{{e.op|upper}}</strong>
+          <span class="time">· {{e.time}}</span>
+          <span class="title">· {{e.title}}</span>
+        </summary>
+        <div class="block">
+          <div class="label">System / User Messages</div>
+          <pre>{{ e.messages | tojson(indent=2) }}</pre>
+        </div>
+        {% if e.response %}
+        <div class="block">
+          <div class="label">Model Response</div>
+          <pre>{{ e.response }}</pre>
+        </div>
+        {% endif %}
+        {% if e.error %}
+        <div class="block">
+          <div class="label">Error</div>
+          <pre>{{ e.error }}</pre>
+        </div>
+        {% endif %}
+      </details>
+    {% endfor %}
+  {% else %}
+    <p>No AI entries yet.</p>
+  {% endif %}
+</div>
+
+<style>
+.logwrap{margin-top:.5rem}
+.logitem{background:#0f1530;border:1px solid var(--line);border-radius:.8rem;margin:.5rem 0;padding:.25rem .5rem}
+.logitem summary{cursor:pointer;display:flex;align-items:center;gap:.5rem}
+.badge{font-size:.75rem;padding:.15rem .4rem;border-radius:.4rem;background:#2a2f55;color:#cfe7ff}
+.badge.ok{background:var(--accent);color:#06221a}
+.badge.error{background:#ff6b6b;color:#2b0711}
+.badge["parse-fail"]{background:#ffb86b;color:#2b1a07}
+.time,.title{color:var(--muted)}
+.block{margin:.6rem 0}
+.block .label{color:#cfe7ff;margin-bottom:.25rem;font-size:.9rem}
+pre{white-space:pre-wrap;word-wrap:break-word;background:#0b1021;border:1px solid var(--line);border-radius:.5rem;padding:.5rem}
+.muted{color:var(--muted)}
+</style>
+{% endblock %}

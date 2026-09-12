@@ -1,0 +1,29 @@
+{% extends "settings/_layout.html" %}
+{% block settings %}
+<h2>Security</h2>
+<section class="panel">
+  <h3>Password</h3>
+  <form method="post" action="/settings/security/password" class="stack">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    {% if user.has_password %}<label>Current password <input name="current_password" type="password" autocomplete="current-password" required></label>{% else %}<p class="muted small">This account signs in through TG11 and has no local password yet. Setting one lets you sign in even if TG11 is unavailable.</p>{% endif %}
+    <div class="row"><label>New password <input name="new_password" type="password" minlength="10" autocomplete="new-password" required></label><label>Repeat <input name="new_password2" type="password" minlength="10" autocomplete="new-password" required></label></div>
+    <button type="submit" class="btn primary">{{ 'Change password' if user.has_password else 'Set password' }}</button>
+  </form>
+</section>
+<section class="panel">
+  <h3>TG11 account</h3>
+  {% if links %}
+    <ul class="plain">{% for l in links %}<li><b>{{ l.provider }}</b> · subject <code>{{ l.subject }}</code> · linked {{ l.linked_at.strftime('%Y-%m-%d') }} ({{ l.migration_source }}){% if l.email_at_link %} · {{ l.email_at_link }}{% endif %}
+      <form method="post" action="/settings/security/links/{{ l.id }}/unlink" style="display:inline" onsubmit="return confirm('Unlink this identity?')"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="danger">Unlink</button></form></li>{% endfor %}</ul>
+  {% else %}
+    <p class="muted small">Not linked. {% if oidc_configured %}<a class="btn primary" href="/auth/tg11/login?link=1&next=/settings/security">Link my TG11 account</a>{% else %}TG11 sign-in is not configured on this server yet; once <code>accounts.tg11.org</code> is live you can link here and sign in with TG11 everywhere.{% endif %}</p>
+  {% endif %}
+</section>
+<section class="panel">
+  <h3>Sessions</h3>
+  <table class="table small"><tr><th>Started</th><th>Last seen</th><th>Method</th><th>IP</th><th>Agent</th><th></th></tr>
+  {% for s in sessions %}<tr class="{% if s.id == current_sid %}current{% endif %}"><td>{{ s.created_at.strftime('%Y-%m-%d %H:%M') }}</td><td>{{ s.last_seen_at.strftime('%Y-%m-%d %H:%M') }}</td><td>{{ s.auth_method }}</td><td>{{ s.ip_address }}</td><td class="muted">{{ s.user_agent[:60] }}</td><td>{% if s.id == current_sid %}<span class="tag">this session</span>{% else %}<form method="post" action="/settings/security/sessions/{{ s.id }}/revoke"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button>Revoke</button></form>{% endif %}</td></tr>{% endfor %}
+  </table>
+  <form method="post" action="/settings/security/sessions/revoke-others"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button>Sign out all other sessions</button></form>
+</section>
+{% endblock %}

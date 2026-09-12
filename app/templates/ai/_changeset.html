@@ -1,0 +1,29 @@
+<article class="changeset status-{{ cs.status }}" id="cs-{{ cs.id }}">
+  <div class="cs-q muted small">You: {{ prompt }}</div>
+  <div class="cs-msg">{{ cs.assistant_message | replace('\n', '<br>') | safe }}</div>
+  {% if ops %}
+  <form hx-post="/boards/{{ board.slug }}/ai/changesets/{{ cs.id }}/apply" hx-target="#cs-{{ cs.id }}" hx-swap="outerHTML" class="cs-ops">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <ol>
+    {% for op in ops %}
+      <li class="op op-{{ op.op }}">
+        {% if cs.status in ('proposed', 'partial') %}<input type="checkbox" name="op" value="{{ loop.index0 }}" checked>{% endif %}
+        <b>{{ op.op | replace('_', ' ') }}</b>
+        {% if op.op == 'create_task' %}“{{ op.fields.title }}”{% if op.fields.estimate_min %} · {{ op.fields.estimate_min }}m{% endif %}{% if op.fields.due %} · due {{ op.fields.due }}{% endif %}{% if op.fields.contexts %} · {{ op.fields.contexts|join(', ') }}{% endif %}{% if op.fields.depends_on %} · after {{ op.fields.depends_on|join(', ') }}{% endif %}
+        {% else %}“{{ op.task_title }}”{% if op.op == 'update_task' %}: {% for k, v in op.fields.items() %}<code>{{ k }}={{ v }}</code> {% endfor %}{% endif %}{% endif %}
+        {% if op.reason %}<div class="muted small">{{ op.reason }}</div>{% endif %}
+      </li>
+    {% endfor %}
+    </ol>
+    {% if cs.status in ('proposed', 'partial') %}
+    <div class="row">
+      <button type="submit" class="btn primary">Apply selected</button>
+      <button type="button" class="danger" hx-post="/boards/{{ board.slug }}/ai/changesets/{{ cs.id }}/reject" hx-target="#cs-{{ cs.id }}" hx-swap="outerHTML" hx-include="closest form">Reject</button>
+    </div>
+    {% else %}
+    <div class="muted small">Status: <b>{{ cs.status }}</b>{% if result %} · applied {{ result.applied }}{% if result.skipped %}, skipped {{ result.skipped }}{% endif %}{% if result.errors %} · errors: {{ result.errors|join('; ') }}{% endif %}{% endif %}</div>
+    {% endif %}
+  </form>
+  {% endif %}
+  <div class="muted small">{{ cs.model_ref }}</div>
+</article>

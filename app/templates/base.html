@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>{% block title %}{{ site_name }}{% endblock %}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="/static/styles.css?v={{ app_version }}" />
+  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+</head>
+<body hx-headers='{"X-CSRF-Token": "{{ csrf_token }}"}' data-csrf="{{ csrf_token }}">
+  <header class="topbar">
+    <a class="brand" href="/">{{ site_name }}</a>
+    {% if user %}
+      {% if boards %}
+      <form class="boardswitch" method="get" onsubmit="return false">
+        <select onchange="if(this.value) window.location.href='/boards/'+this.value+'/'" title="Switch board">
+          {% for b in boards %}
+          <option value="{{ b.slug }}" {% if board and b.id == board.id %}selected{% endif %}>{{ b.icon }} {{ b.name }}</option>
+          {% endfor %}
+        </select>
+        <a class="linkbtn" href="/boards" title="All boards">Boards</a>
+      </form>
+      {% endif %}
+      {% block topbar %}{% endblock %}
+      <span class="spacer"></span>
+      <nav class="usernav">
+        <a class="linkbtn" href="/settings/ai-providers" title="AI providers">AI</a>
+        <a class="linkbtn" href="/settings/account" title="Settings">Settings</a>
+        <form method="post" action="/logout" style="display:inline"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="linkbtn" type="submit" title="Sign out {{ user.username }}">Sign out</button></form>
+      </nav>
+    {% endif %}
+  </header>
+  <main class="wrap">
+    {% if msg %}<div class="flash ok">{{ msg }}</div>{% endif %}
+    {% if err %}<div class="flash bad">{{ err }}</div>{% endif %}
+    {% block content %}{% endblock %}
+  </main>
+  <footer class="footer">Flowboard {{ app_version }} · <a href="https://github.com/tg11-org" rel="noopener">TG11</a> · AGPL-3.0</footer>
+  <script src="/static/app.js?v={{ app_version }}"></script>
+</body>
+</html>

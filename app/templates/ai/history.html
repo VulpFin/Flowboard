@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Assistant history · {{ board.name }}{% endblock %}
+{% block content %}
+<h2>Assistant history · {{ board.icon }} {{ board.name }}</h2>
+<section class="panel">
+<table class="table">
+  <tr><th>When (UTC)</th><th>Request</th><th>Model</th><th>Ops</th><th>Status</th></tr>
+  {% for r in rows %}<tr><td class="small muted">{{ r.created_at.strftime('%Y-%m-%d %H:%M') }}</td><td>{{ r.request_text[:120] }}</td><td class="small">{{ r.model_ref }}</td><td>{{ (r.operations_json|length > 2) and (r.operations_json.count('"op"')) or 0 }}</td><td>{{ r.status }}</td></tr>
+  {% else %}<tr><td colspan="5" class="muted">No requests yet.</td></tr>{% endfor %}
+</table>
+</section>
+{% endblock %}

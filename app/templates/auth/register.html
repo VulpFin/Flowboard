@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Create account · {{ site_name }}{% endblock %}
+{% block content %}
+<section class="panel narrow">
+  <h2>Create your Flowboard account</h2>
+  {% if error %}<div class="flash bad">{{ error }}</div>{% endif %}
+  <form method="post" action="/register" class="stack">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label>Email <input name="email" type="email" value="{{ email or '' }}" required autocomplete="email"></label>
+    <label>Username <input name="username" value="{{ username or '' }}" required pattern="[a-z0-9_.]{3,30}" title="3-30 lowercase letters, digits, _ or ." autocomplete="username"></label>
+    <label>Display name <input name="display_name" value="{{ display_name or '' }}" autocomplete="name"></label>
+    <label>Password <input name="password" type="password" required minlength="10" autocomplete="new-password"></label>
+    <label>Repeat password <input name="password2" type="password" required minlength="10" autocomplete="new-password"></label>
+    <button type="submit" class="btn primary">Create account</button>
+  </form>
+  <p class="muted">Already have one? <a href="/login">Sign in</a>{% if oidc_enabled %} · <a href="/auth/tg11/login">{{ oidc_label }}</a>{% endif %}</p>
+</section>
+{% endblock %}

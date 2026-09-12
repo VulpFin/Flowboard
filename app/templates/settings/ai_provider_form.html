@@ -1,0 +1,48 @@
+{% extends "settings/_layout.html" %}
+{% block settings %}
+<h2>{{ spec.name }}</h2>
+{% if spec.notes %}<p class="muted">{{ spec.notes }}</p>{% endif %}
+<p class="muted small">{% if spec.console_url %}<a href="{{ spec.console_url }}" target="_blank" rel="noopener">Get an API key</a> · {% endif %}{% if spec.docs_url %}<a href="{{ spec.docs_url }}" target="_blank" rel="noopener">Docs</a> · {% endif %}Capabilities: {{ spec.capabilities.labels()|join(', ') }}</p>
+<section class="panel">
+<form method="post" action="/settings/ai-providers/{{ spec.id }}" class="stack">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  {% for f in spec.credential_fields %}
+  <label>{{ f.label }}{% if cred %} <span class="muted small">(saved: {{ cred.secret_hint }} — leave blank to keep){% endif %}
+    <input name="secret_{{ f.key }}" type="password" autocomplete="off" placeholder="{{ f.placeholder }}" {% if f.required and not cred %}required{% endif %}>
+  </label>
+  {% if f.help %}<div class="muted small">{{ f.help }}</div>{% endif %}
+  {% endfor %}
+  {% for f in spec.config_fields %}
+  <label>{{ f.label }} <input name="config_{{ f.key }}" value="{{ config.get(f.key, '') }}" placeholder="{{ f.placeholder or spec.default_base_url if f.key == 'base_url' else f.placeholder }}" {% if f.required %}required{% endif %}></label>
+  {% endfor %}
+  <label>Label (optional) <input name="label" value="{{ cred.label if cred else '' }}" placeholder="e.g. Work account"></label>
+  {% if cred %}
+  <label>Default model
+    <select name="default_model">
+      <option value="">— pick after testing —</option>
+      {% for family, models in groups.items() %}<optgroup label="{{ family }}">{% for m in models %}<option value="{{ m.id }}" {% if cred.default_model == m.id %}selected{% endif %}>{{ m.name }}{% if m.tags %} ({{ m.tags|join(', ') }}){% endif %}</option>{% endfor %}</optgroup>{% endfor %}
+    </select>
+  </label>
+  {% endif %}
+  <div class="row">
+    <button type="submit" class="btn primary">Save & test connection</button>
+    <a class="btn-link" href="/settings/ai-providers">Back</a>
+  </div>
+</form>
+</section>
+{% if cred %}
+<section class="panel">
+  <h3>Status</h3>
+  <div id="provider-status">{% include "settings/_provider_status.html" %}</div>
+  <form hx-post="/settings/ai-providers/{{ spec.id }}/test" hx-target="#provider-status" hx-swap="innerHTML" style="margin-top:.5rem"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button>Re-test & refresh models</button></form>
+  {% if groups %}
+  <h3>Available models ({{ groups.values()|map('length')|sum }})</h3>
+  {% for family, models in groups.items() %}
+  <details {% if loop.first %}open{% endif %}><summary>{{ family }} <span class="muted small">{{ models|length }}</span></summary>
+    <ul class="plain small">{% for m in models %}<li><code>{{ m.id }}</code>{% if m.name and m.name != m.id %} {{ m.name }}{% endif %}{% for t in m.tags %} <span class="tag">{{ t }}</span>{% endfor %}{% if m.context_window %} <span class="muted">ctx {{ m.context_window }}</span>{% endif %}</li>{% endfor %}</ul>
+  </details>
+  {% endfor %}
+  {% endif %}
+</section>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,22 @@
+{% extends "settings/_layout.html" %}
+{% block settings %}
+<h2>AI usage</h2>
+<p class="muted">Last {{ days }} days · {{ summary.total_calls }} calls · estimated <b>${{ '%.4f'|format(summary.total_cost) }}</b>. Costs are estimates from <code>app/ai/catalog.json</code> pricing (per 1M tokens) and may lag vendor changes; your provider's dashboard is authoritative.
+  <a href="?days=7">7d</a> · <a href="?days=30">30d</a> · <a href="?days=90">90d</a></p>
+<section class="panel">
+<h3>By provider</h3>
+<table class="table"><tr><th>Provider</th><th>Calls</th><th>Errors</th><th>Input tokens</th><th>Output tokens</th><th>Est. cost</th></tr>
+{% for p, v in summary.by_provider.items() %}<tr><td>{{ p }}</td><td>{{ v.calls }}</td><td>{{ v.errors }}</td><td>{{ v.input_tokens }}</td><td>{{ v.output_tokens }}</td><td>${{ '%.4f'|format(v.cost) }}</td></tr>{% else %}<tr><td colspan="6" class="muted">No usage yet.</td></tr>{% endfor %}
+</table>
+<h3>By model</h3>
+<table class="table"><tr><th>Model</th><th>Calls</th><th>Errors</th><th>In</th><th>Out</th><th>Avg latency</th><th>Est. cost</th></tr>
+{% for m in summary.by_model %}<tr><td><code>{{ m.provider }}:{{ m.model }}</code></td><td>{{ m.calls }}</td><td>{{ m.errors }}</td><td>{{ m.input_tokens }}</td><td>{{ m.output_tokens }}</td><td>{{ m.avg_latency_ms }} ms</td><td>${{ '%.4f'|format(m.cost) }}</td></tr>{% endfor %}
+</table>
+</section>
+<section class="panel">
+<h3>Recent calls</h3>
+<table class="table small"><tr><th>When (UTC)</th><th>Model</th><th>Op</th><th>Board</th><th>Latency</th><th>Tokens</th><th>Cost</th><th>Result</th></tr>
+{% for r in recent %}<tr><td>{{ r.created_at.strftime('%m-%d %H:%M:%S') }}</td><td><code>{{ r.provider }}:{{ r.model }}</code></td><td>{{ r.operation }}</td><td>{{ (r.board_id or '')[:8] }}</td><td>{{ r.latency_ms }} ms</td><td>{{ r.input_tokens or '–' }}/{{ r.output_tokens or '–' }}</td><td>{% if r.estimated_cost_usd is not none %}${{ '%.5f'|format(r.estimated_cost_usd) }}{% else %}–{% endif %}</td><td>{% if r.success %}<span class="tag ok">ok</span>{% else %}<span class="tag bad" title="{{ r.error_message }}">{{ r.error_kind }}</span>{% endif %}</td></tr>{% endfor %}
+</table>
+</section>
+{% endblock %}

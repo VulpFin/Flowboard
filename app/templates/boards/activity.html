@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Activity · {{ board.name }}{% endblock %}
+{% block content %}
+<h2>Activity · {{ board.icon }} {{ board.name }}</h2>
+<section class="panel">
+<table class="table">
+  <tr><th>When (UTC)</th><th>Who</th><th>Action</th><th>Summary</th></tr>
+  {% for e in entries %}
+  <tr><td class="muted small">{{ e.created_at.strftime('%Y-%m-%d %H:%M') }}</td><td>{{ e.actor_kind }}</td><td>{{ e.action }}</td><td>{{ e.summary }}</td></tr>
+  {% else %}<tr><td colspan="4" class="muted">Nothing yet.</td></tr>{% endfor %}
+</table>
+</section>
+{% endblock %}

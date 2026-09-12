@@ -1,0 +1,31 @@
+{% extends "settings/_layout.html" %}
+{% block settings %}
+<h2>AI providers</h2>
+<p class="muted">Bring your own keys. Keys are encrypted at rest (AES-256-GCM), never shown again after saving, and only ever used server-side on your behalf.</p>
+<table class="table providers">
+  <tr><th>Provider</th><th>Status</th><th>Default model</th><th>Capabilities</th><th></th></tr>
+  {% for r in rows %}
+  <tr class="{% if r.spec.status == 'legacy' %}muted{% endif %}">
+    <td><b>{{ r.spec.name }}</b>{% if r.cred and r.cred.label %} <span class="muted small">{{ r.cred.label }}</span>{% endif %}{% if r.spec.notes %}<div class="muted small">{{ r.spec.notes }}</div>{% endif %}</td>
+    <td>
+      {% if r.cred %}
+        <span class="tag {{ 'ok' if r.cred.validation_status == 'valid' else ('bad' if r.cred.validation_status in ('invalid','error') else '') }}">{{ r.cred.validation_status }}</span>
+        {% if not r.cred.enabled %}<span class="tag">disabled</span>{% endif %}
+        <div class="muted small">key {{ r.cred.secret_hint }}{% if r.cred.last_validated_at %} · checked {{ r.cred.last_validated_at.strftime('%Y-%m-%d %H:%M') }}{% endif %}</div>
+        {% if r.cred.validation_message %}<div class="muted small">{{ r.cred.validation_message }}</div>{% endif %}
+      {% else %}<span class="muted small">not configured</span>{% endif %}
+    </td>
+    <td class="small">{{ r.cred.default_model if r.cred else '' }}</td>
+    <td class="small">{{ r.spec.capabilities.labels()|join(' · ') }}</td>
+    <td class="nowrap">
+      <a class="btn-link" href="/settings/ai-providers/{{ r.spec.id }}">{{ 'Edit' if r.cred else 'Add' }}</a>
+      {% if r.cred %}
+      <form method="post" action="/settings/ai-providers/{{ r.spec.id }}/test" style="display:inline"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button>Test</button></form>
+      <form method="post" action="/settings/ai-providers/{{ r.spec.id }}/toggle" style="display:inline"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button>{{ 'Disable' if r.cred.enabled else 'Enable' }}</button></form>
+      <form method="post" action="/settings/ai-providers/{{ r.spec.id }}/delete" style="display:inline" onsubmit="return confirm('Remove {{ r.spec.name }} credentials?')"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="danger">Remove</button></form>
+      {% endif %}
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+{% endblock %}

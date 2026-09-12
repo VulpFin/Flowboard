@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Choose a new password · {{ site_name }}{% endblock %}
+{% block content %}
+<section class="panel narrow">
+  <h2>Choose a new password</h2>
+  {% if error %}<div class="flash bad">{{ error }}</div>{% endif %}
+  <form method="post" action="/password/reset/{{ token }}" class="stack">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label>New password <input name="password" type="password" required minlength="10" autocomplete="new-password"></label>
+    <label>Repeat <input name="password2" type="password" required minlength="10" autocomplete="new-password"></label>
+    <button type="submit" class="btn primary">Save password</button>
+  </form>
+</section>
+{% endblock %}

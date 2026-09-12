@@ -1,0 +1,181 @@
+<!--
+ Copyright (C) 2025 TG11
+ 
+ This program is free software: you can redistribute it and/or modify
+ it under the terms of the GNU Affero General Public License as
+ published by the Free Software Foundation, either version 3 of the
+ License, or (at your option) any later version.
+ 
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU Affero General Public License for more details.
+ 
+ You should have received a copy of the GNU Affero General Public License
+ along with this program.  If not, see <https://www.gnu.org/licenses/>.
+-->
+
+<!--
+ Copyright (C) 2025 TG11
+ 
+ This program is free software: you can redistribute it and/or modify
+ it under the terms of the GNU Affero General Public License as
+ published by the Free Software Foundation, either version 3 of the
+ License, or (at your option) any later version.
+ 
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU Affero General Public License for more details.
+ 
+ You should have received a copy of the GNU Affero General Public License
+ along with this program.  If not, see <https://www.gnu.org/licenses/>.
+-->
+
+<section id="board" class="board">
+  {% for ctx, tasks in columns.items() %}
+  <div class="col" data-context="{{ctx}}">
+    <h3>{{ctx}}</h3>
+
+    <!-- Make each column a sortable list -->
+    <ul class="dcol" id="col-{{ ctx|replace(' ','_')|lower }}">
+      {% for t in tasks %}
+      <li class="cardwrap" data-task="{{t.id}}">
+        <div class="card">
+          <div class="title">{{t.title}}</div>
+
+          <div class="meta" title="Estimate · Importance · Due (if any) · Energy · Dependencies">
+            {{t.estimate_min}}m · imp {{t.importance}}
+            {% if t.due %} · due {{t.due}}{% endif %}
+            · energy {{t.energy}}
+            {% if t.depends_on %} · deps {{t.depends_on|join(', ')}}{% endif %}
+          </div>
+
+          <div class="desc">{{t.description}}</div>
+
+          <div class="actions">
+            <!-- Focus Mode -->
+            <button type="button" class="focusbtn"
+                    data-id="{{t.id}}"
+                    data-title="{{t.title}}"
+                    data-est="{{t.estimate_min}}"
+                    title="Start a focus timer for this task">Focus</button>
+
+            <!-- AI Re-evaluate -->
+            <form hx-post="/tasks/{{t.id}}/reeval"
+                  hx-target="#board" hx-swap="outerHTML" style="display:inline">
+              <button title="AI re-evaluate fields & contexts">AI Re-evaluate</button>
+            </form>
+
+            <!-- Done -->
+            <form hx-post="/tasks/{{t.id}}/done"
+                  hx-target="#board" hx-swap="outerHTML" style="display:inline">
+              <button>Done</button>
+            </form>
+
+            <!-- Delete -->
+            <form hx-delete="/tasks/{{t.id}}"
+                  hx-target="#board" hx-swap="outerHTML" style="display:inline">
+              <button class="danger">Delete</button>
+            </form>
+          </div>
+        </div>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endfor %}
+</section>
+
+<!-- Focus Mode modal (simple, local) -->
+<div id="focus-modal" style="display:none" class="focusmodal">
+  <div class="focuscard">
+    <h3 id="focus-title"></h3>
+    <p>Timer: <span id="focus-remaining"></span></p>
+    <button id="focus-stop">Stop</button>
+  </div>
+</div>
+
+<style>
+.focusmodal{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:1000}
+.focuscard{background:#0f1530;border:1px solid var(--line);border-radius:1rem;padding:1rem;min-width:300px}
+</style>
+
+<script>
+  // --- Drag & drop with SortableJS ---
+  (function(){
+    document.querySelectorAll('.dcol').forEach(function(el){
+      if (el._sortable_init) return; // avoid double init on partial swap
+      el._sortable_init = true;
+      new Sortable(el, {
+        group: 'flowboard',
+        animation: 150,
+        onEnd: function(evt){
+          const ul = evt.to;                               // destination UL
+          const ctx = ul.closest('.col').dataset.context;  // column context
+          const order = Array.from(ul.querySelectorAll('.cardwrap')).map(li => li.dataset.task);
+          fetch('/tasks/reorder', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json','HX-Request':'true'},
+            body: JSON.stringify({context: ctx, order: order})
+          }).then(r=>r.text()).then(html=>{
+            // Server returns fresh board partial
+            const board = document.getElementById('board');
+            if (board) board.outerHTML = html;
+          });
+        }
+      });
+    });
+  })();
+
+  // --- Focus Mode (very lightweight) ---
+  (function(){
+    const modal = document.getElementById('focus-modal');
+    if (!modal) return;
+
+    const titleNode = document.getElementById('focus-title');
+    const remainNode = document.getElementById('focus-remaining');
+    const stopBtn = document.getElementById('focus-stop');
+    let timer=null, endTs=0, taskId=null;
+
+    document.querySelectorAll('.focusbtn').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const est = parseInt(btn.dataset.est||'25',10)*60; // seconds
+        taskId = btn.dataset.id;
+        titleNode.textContent = btn.dataset.title;
+        endTs = Date.now() + est*1000;
+        modal.style.display='flex';
+        tick();
+        timer = setInterval(tick, 1000);
+      });
+    });
+
+    function tick(){
+      const s = Math.max(0, Math.floor((endTs - Date.now())/1000));
+      const m = Math.floor(s/60), r = s%60;
+      remainNode.textContent = `${m}m ${r}s`;
+      if (s<=0){ clearInterval(timer); donePrompt(); }
+    }
+
+    stopBtn.onclick = ()=>{ clearInterval(timer); donePrompt(); };
+
+    function donePrompt(){
+      const actual = prompt("How many minutes did this actually take?", "");
+      modal.style.display='none';
+      if(!taskId) return;
+      fetch(`/tasks/${taskId}/actual`, {
+        method:'POST', headers:{'Content-Type':'application/json','HX-Request':'true'},
+        body: JSON.stringify({actual_min: parseInt(actual||'0',10)||null})
+      }).then(r=>r.text()).then(html=>{
+        const board = document.getElementById('board');
+        if (board) board.outerHTML = html;
+      });
+    }
+  })();
+</script>
+
+{% if clear_plan %}
+<section id="plan" class="plan" hx-swap-oob="outerHTML">
+  <p>No tasks to plan.</p>
+</section>
+{% endif %}

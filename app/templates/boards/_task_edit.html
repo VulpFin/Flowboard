@@ -1,0 +1,20 @@
+<form hx-post="/boards/{{ board.slug }}/tasks/{{ t.id }}/edit" hx-target="#board" hx-swap="outerHTML" class="editform stack">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <input name="title" value="{{ t.title }}" required>
+  <textarea name="description" rows="2" placeholder="Description">{{ t.description }}</textarea>
+  <div class="row">
+    <input name="estimate_min" type="number" min="1" max="1440" value="{{ t.estimate_min }}" title="Estimate (min)">
+    <select name="importance">{% for i in [1,2,3,4,5] %}<option value="{{ i }}" {% if i == t.importance %}selected{% endif %}>imp {{ i }}</option>{% endfor %}</select>
+    <select name="energy">{% for e in ['low','medium','high'] %}<option value="{{ e }}" {% if e == t.energy %}selected{% endif %}>{{ e }}</option>{% endfor %}</select>
+    <select name="status"><option value="open" {% if t.status == 'open' %}selected{% endif %}>open</option><option value="blocked" {% if t.status == 'blocked' %}selected{% endif %}>blocked</option></select>
+  </div>
+  <div class="row">
+    <input name="due" value="{{ t.due or '' }}" placeholder="Due YYYY-MM-DD [HH:MM]">
+    <input name="contexts" value="{{ t.contexts|join(', ') }}" placeholder="Contexts, comma separated">
+    <input name="depends_on" value="{{ t.depends_on|join(' ') }}" placeholder="Depends on (ids)">
+  </div>
+  <div class="row">
+    <button type="submit" class="btn primary">Save</button>
+    <button type="button" hx-get="/boards/{{ board.slug }}/" hx-select="#board" hx-target="#board" hx-swap="outerHTML">Cancel</button>
+  </div>
+</form>

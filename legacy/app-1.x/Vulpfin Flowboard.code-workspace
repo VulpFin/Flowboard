@@ -1,0 +1,12 @@
+{
+	"folders": [
+		{
+			"path": ".."
+		}
+	],
+	"settings": {
+		"json.schemas": [
+			"python.defaultInterpreterPath: "..\.env\Scripts\python.exe"
+		]
+	}
+}
