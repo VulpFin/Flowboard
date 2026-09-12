@@ -27,6 +27,11 @@ router = APIRouter(tags=["boards"])
 @router.get("/")
 def home(user: User = Depends(deps.get_current_user), db: Session = Depends(get_db)):
     board = auth_service.ensure_default_board(db, user)
+    if user.profile is not None and not user.profile.tutorial_seeded:  # accounts created before 2.1
+        try:
+            tutorial_service.seed_tutorial(db, user)
+        except Exception:
+            pass
     return deps.redirect(f"/boards/{board.slug}/")
 
 
