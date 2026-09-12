@@ -197,6 +197,11 @@ def update_task(db: Session, board: Board, task: Task, patch: Dict[str, Any], *,
         if "status" in changes:
             task.done = task.status == "done"
             task.completed_at = utcnow() if task.done else None
+        if "assigned_to_id" in changes:
+            # who handed it over and when - the digest tells people what landed
+            # on their plate since the last one
+            task.assigned_at = utcnow() if task.assigned_to_id else None
+            task.assigned_by_id = actor_id if task.assigned_to_id else None
         db.flush()
         log_activity(db, board, task_id=task.id, actor_id=actor_id, actor_kind=actor_kind, action="updated", summary=f"Updated “{task.title}” ({', '.join(changes)})", data=changes)
     return task

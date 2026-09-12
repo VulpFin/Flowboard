@@ -68,6 +68,10 @@ class Settings(BaseSettings):
     SMTP_USE_TLS: bool = True
     EMAIL_FROM: str = "Vulpfin Flowboard <noreply@tg11.org>"
 
+    # --- support ("Contact support" in the footer) ----------------------
+    FLOWBOARD_SUPPORT_EMAIL: str = ""       # where reports go; defaults to the EMAIL_FROM address
+    FLOWBOARD_SUPPORT_MAX_PER_HOUR: int = 5  # per user (or per client IP when signed out)
+
     # ------------------------------------------------------------------
     @property
     def data_dir(self) -> Path:
@@ -108,6 +112,14 @@ class Settings(BaseSettings):
     @property
     def microsoft_configured(self) -> bool:
         return bool(self.MICROSOFT_CLIENT_ID and self.MICROSOFT_CLIENT_SECRET)
+
+    @property
+    def support_email(self) -> str:
+        """Operator address for support reports; falls back to the From address."""
+        if self.FLOWBOARD_SUPPORT_EMAIL.strip():
+            return self.FLOWBOARD_SUPPORT_EMAIL.strip()
+        sender = self.EMAIL_FROM.strip()
+        return sender.split("<")[-1].rstrip(">").strip() if "<" in sender else sender
 
     def absolute_url(self, path: str) -> str:
         return self.FLOWBOARD_SITE_URL.rstrip("/") + "/" + path.lstrip("/")

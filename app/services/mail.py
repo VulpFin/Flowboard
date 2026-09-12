@@ -14,11 +14,18 @@ from ..models import User
 log = logging.getLogger("flowboard.mail")
 
 
-def send_mail(to: str, subject: str, body: str) -> bool:
+def _header_safe(value: str) -> str:
+    """No CR/LF in a header value - that is how header injection happens."""
+    return " ".join((value or "").replace("\r", " ").replace("\n", " ").split())[:500]
+
+
+def send_mail(to: str, subject: str, body: str, *, reply_to: str = "") -> bool:
     msg = EmailMessage()
     msg["From"] = settings.EMAIL_FROM
-    msg["To"] = to
-    msg["Subject"] = subject
+    msg["To"] = _header_safe(to)
+    msg["Subject"] = _header_safe(subject)
+    if reply_to:
+        msg["Reply-To"] = _header_safe(reply_to)
     msg.set_content(body)
     if not settings.SMTP_HOST:
         log.warning("SMTP not configured; would send to %s: %s\n%s", to, subject, body)

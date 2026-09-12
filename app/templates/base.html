@@ -40,7 +40,7 @@
     {% block content %}{% endblock %}
   </main>
   <div id="reflect-slot"></div>
-  <footer class="footer">Flowboard {{ app_version }} · <a href="https://github.com/tg11-org" rel="noopener">TG11</a> · AGPL-3.0</footer>
+  <footer class="footer">Flowboard {{ app_version }} · <a href="https://github.com/tg11-org" rel="noopener">TG11</a> · AGPL-3.0 · <a class="supportlink" href="/support?from_page={{ request.url.path | urlencode }}">Contact support</a></footer>
   <script src="/static/app.js?v={{ app_version }}"></script>
 </body>
 </html>

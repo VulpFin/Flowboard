@@ -23,6 +23,7 @@ from .web.routers import auth as auth_router
 from .web.routers import boards as boards_router
 from .web.routers import calendars as calendars_router
 from .web.routers import settings as settings_router
+from .web.routers import support as support_router
 from .web.routers import tasks as tasks_router
 
 log = logging.getLogger("flowboard")
@@ -96,6 +97,7 @@ def create_app() -> FastAPI:
     app.include_router(ai_router.router)
     app.include_router(settings_router.router)
     app.include_router(calendars_router.router)
+    app.include_router(support_router.router)
 
     @app.exception_handler(deps.LoginRequired)
     async def _login_required(request: Request, exc: deps.LoginRequired):

@@ -50,6 +50,8 @@ class Task(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     rollover_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     instructions: Mapped[str] = mapped_column(Text, default="", nullable=False)  # AI "how to do this" (markdown)
     assigned_to_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True, index=True)  # board member who owns this task
+    assigned_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)  # when the current assignee got it
+    assigned_by_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)  # who gave it to them (for "assigned to you" notices)
 
     # ---- convenience accessors (keep templates/planner unchanged) -------
     @property

@@ -206,3 +206,6 @@ button.mini, input.mini, select.mini { font-size: .78rem; padding: .15rem .45rem
   .settings { grid-template-columns: 1fr; }
   .settingsnav { flex-direction: row; flex-wrap: wrap; }
 }
+.hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+.footer .supportlink { color: var(--muted); }
+.footer .supportlink:hover { color: var(--text); }

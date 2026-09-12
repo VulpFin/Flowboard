@@ -1,4 +1,4 @@
-# Scheduling, rollover and per-user calibration (Flowboard 2.2)
+# Scheduling, rollover and per-user calibration (Flowboard 2.4)
 
 ## Work schedule
 Settings → Schedule & Calibration stores, per weekday: enabled, start/end, **max minutes**,
@@ -109,7 +109,13 @@ Settings → Morning Digest (`user_profiles.digest_json`): `enabled`, `hour` (lo
 writes the account's `profile.timezone`.
 
 `services/digest.py` gathers today's scheduled tasks, what is due today, what is overdue,
-the day's remaining capacity (meetings included) and the best task to start with. With an
+the day's remaining capacity (meetings included), the best task to start with, and - since
+2.4 - **what somebody else assigned to you since the last digest** ("2 tasks were assigned
+to you on Launch by Priya"). `Task.assigned_at` / `assigned_by_id` are stamped by
+`tasks.update_task` whenever the assignee changes, so the UI and the assistant both feed it;
+self-assignments are not reported, the window is the last digest (24 h for a first one,
+never more than a week), and a new assignment alone is enough to send an
+*only when something is due* digest. With an
 AI provider configured it runs the assistant's *Daily briefing* prompt through the user's
 own credentials and appends the plain digest; without one (or on any provider error) the
 plain digest is the whole email. Delivery goes through `CHANNELS` (`email` today - add an

@@ -20,7 +20,9 @@ See `.env.example` for a complete annotated template.
 | `FLOWBOARD_SESSION_MAX_AGE` | no | seconds |
 | `FLOWBOARD_AI_LOG_PROMPTS` | no | store prompt/response text in usage records |
 | `FLOWBOARD_PROXY_HEADERS` | no | honour X-Forwarded-* from Apache |
-| `SMTP_HOST/PORT/USER/PASSWORD/USE_TLS`, `EMAIL_FROM` | for password reset | outgoing mail |
+| `SMTP_HOST/PORT/USER/PASSWORD/USE_TLS`, `EMAIL_FROM` | for password reset, invitations, digests and support | outgoing mail |
+| `FLOWBOARD_SUPPORT_EMAIL` | no | where the footer's *Contact support* form sends; defaults to the `EMAIL_FROM` address |
+| `FLOWBOARD_SUPPORT_MAX_PER_HOUR` | no | support reports per user (or per client IP when signed out), default 5 |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | for Google Calendar | OAuth web client |
 | `MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET`, `MICROSOFT_TENANT_ID` | for Microsoft 365 | Entra app registration |
 | `TG11_OIDC_ISSUER`, `TG11_OIDC_CLIENT_ID`, `TG11_OIDC_CLIENT_SECRET`, `TG11_OIDC_SCOPES`, `TG11_OIDC_LOGIN_LABEL` | for TG11 SSO | OIDC relying-party settings |

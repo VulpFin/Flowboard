@@ -139,7 +139,9 @@ def assign_task(request: Request, task_id: str, assigned_to_id: str = Form(""), 
     if new_owner is not None and new_owner not in member_ids:
         raise HTTPException(400, "Not a member of this board")
     if t.assigned_to_id != new_owner:
-        t.assigned_to_id = new_owner
+        # through update_task so assigned_at / assigned_by_id are recorded the
+        # same way whether a person or the assistant made the change
+        task_service.update_task(db, board, t, {"assigned_to_id": new_owner}, actor_id=user.id)
         t.scheduled_date, t.scheduled_start = None, None  # re-plan against the new owner's schedule
         db.flush()
         who = db.get(User, new_owner) if new_owner else None

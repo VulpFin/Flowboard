@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Contact support · {{ site_name }}{% endblock %}
+{% block content %}
+<section class="panel narrow">
+  <h2>Contact support</h2>
+  {% if done %}
+    <p>Your message is on its way. We reply by email, usually to the address you gave.</p>
+    <div class="row"><a class="btn primary" href="/">Back to your board</a> <a class="btn" href="/support">Send another</a></div>
+  {% else %}
+  <p class="muted">Found a bug, stuck on something, or want to suggest a feature? Tell us what happened — the page you were on, your browser and the app version are attached automatically.</p>
+  <form method="post" action="/support" class="stack">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="from_page" value="{{ from_page }}">
+    <label>What kind of message is this?
+      <select name="category">
+        {% for value, label in categories %}<option value="{{ value }}" {% if sent_category == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select>
+    </label>
+    <label>Your email <span class="muted small">(we reply here)</span>
+      <input type="email" name="email" required value="{{ sent_email or (user.email if user else '') }}" placeholder="you@example.com">
+    </label>
+    <label>What happened?
+      <textarea name="message" rows="8" maxlength="{{ max_message }}" required placeholder="What you were doing, what you expected, and what happened instead. Exact error messages help a lot.">{{ sent_message or '' }}</textarea>
+    </label>
+    <label class="hp" aria-hidden="true">Leave this empty <input type="text" name="website" tabindex="-1" autocomplete="off"></label>
+    <div class="row">
+      <button type="submit" class="btn primary">Send message</button>
+      <span class="muted small">Or email <a href="mailto:{{ support_email }}">{{ support_email }}</a> directly.</span>
+    </div>
+  </form>
+  {% if from_page %}<p class="muted small">Reporting about: <code>{{ from_page }}</code></p>{% endif %}
+  {% endif %}
+</section>
+{% endblock %}

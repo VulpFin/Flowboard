@@ -2,4 +2,4 @@
 # Copyright (C) 2025-2026 TG11
 """Vulpfin Flowboard application package."""
 
-__version__ = "2.3.0"
+__version__ = "2.4.0"

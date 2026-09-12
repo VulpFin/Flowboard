@@ -5,6 +5,7 @@
     python -m app.cli create-user  --email ... --username ... [--password ...] [--staff]
     python -m app.cli import-legacy --file flowboard_tasks.json --user <email> [--board "Personal"]
     python -m app.cli rotate-credential-keys
+    python -m app.cli backup [--to PATH] [--keep 14]
     python -m app.cli send-digests [--user a@b.c] [--force] [--dry-run] [--no-ai]
     python -m app.cli gen-keys
     python -m app.cli check
@@ -136,6 +137,72 @@ def cmd_import_legacy(args) -> int:
     return 0
 
 
+def cmd_backup(args) -> int:
+    """Consistent online backup of the SQLite database.
+
+    `cp data/flowboard.sqlite3` is **not** a backup: the database runs in WAL
+    mode, so recent commits live in `-wal` until a checkpoint and a copy of the
+    main file alone can be hours behind (we caught one sitting a whole migration
+    in the past).  SQLite's backup API takes a consistent snapshot of the live
+    database - WAL included - while the service keeps running.
+    """
+    import hashlib
+    import sqlite3
+    from datetime import datetime
+    from pathlib import Path
+
+    from . import __version__
+
+    url = settings.database_url
+    if not url.startswith("sqlite"):
+        print(f"backup only handles SQLite here; {url} needs its own dump tool", file=sys.stderr)
+        return 2
+    src = Path(url.split("///", 1)[-1])
+    if not src.exists():
+        print(f"no database at {src}", file=sys.stderr)
+        return 2
+    dest = Path(args.to) if args.to else src.with_name(f"{src.name}.bak-v{__version__}-{datetime.now().strftime('%Y%m%d%H%M%S')}")
+    dest.parent.mkdir(parents=True, exist_ok=True)
+
+    source = sqlite3.connect(str(src))
+    try:
+        with sqlite3.connect(str(dest)) as out:
+            source.backup(out)
+    finally:
+        source.close()
+
+    check = sqlite3.connect(str(dest))
+    integrity = check.execute("PRAGMA integrity_check").fetchone()[0]
+
+    def _scalar(sql, default=None):
+        try:
+            row = check.execute(sql).fetchone()
+            return row[0] if row else default
+        except sqlite3.Error:
+            return default
+
+    rev = (_scalar("select version_num from alembic_version", "?"),)
+    counts = {t: _scalar(f"select count(*) from {t}", "?") for t in ("users", "boards", "tasks")}
+    check.close()
+    digest = hashlib.sha256(dest.read_bytes()).hexdigest()
+    dest.with_suffix(dest.suffix + ".sha256").write_text(f"{digest}  {dest.name}\n")
+    print(f"backup: {dest} ({dest.stat().st_size} bytes)")
+    print(f"  alembic={rev[0] if rev else '?'} integrity={integrity} {counts}")
+    print(f"  sha256={digest}")
+    if integrity != "ok":
+        return 1
+
+    if args.keep:
+        backups = sorted(src.parent.glob(f"{src.name}.bak-*"), key=lambda p: p.stat().st_mtime, reverse=True)
+        backups = [p for p in backups if p.suffix != ".sha256"]
+        for old in backups[args.keep:]:
+            for path in (old, old.with_suffix(old.suffix + ".sha256")):
+                if path.exists():
+                    path.unlink()
+            print(f"  pruned {old.name}")
+    return 0
+
+
 def cmd_send_digests(args) -> int:
     """Morning digests.  Run every 15 minutes by a systemd timer; only users
     whose local time has just passed their chosen hour get one."""
@@ -198,6 +265,10 @@ def main(argv=None) -> int:
     il.add_argument("--user", required=True, help="email or username of the owner")
     il.add_argument("--board", help="board name/slug (default: the user's default board)")
     il.set_defaults(fn=cmd_import_legacy)
+    bk = sub.add_parser("backup", help="consistent online backup of the SQLite database (WAL included) + SHA-256")
+    bk.add_argument("--to", help="destination path (default: alongside the database, timestamped)")
+    bk.add_argument("--keep", type=int, default=0, help="keep only the newest N backups next to the database")
+    bk.set_defaults(fn=cmd_backup)
     sd = sub.add_parser("send-digests", help="send the morning digest to every user whose local time just passed their chosen hour")
     sd.add_argument("--user", help="only this email address")
     sd.add_argument("--force", action="store_true", help="ignore the hour and the already-sent-today flag")

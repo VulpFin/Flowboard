@@ -54,10 +54,27 @@ need SMTP in `.env` (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`,
 systemd's `EnvironmentFile` does **not** strip inline comments — keep comments
 in `.env` on their own lines.
 
-Database backup before migrations: `sqlite3 data/flowboard.sqlite3
-".backup /root/backups/flowboard/<ts>/flowboard.sqlite3"` (or copy the file
-while the service is stopped). Postgres can be used instead by setting
-`FLOWBOARD_DATABASE_URL=postgresql+psycopg://…` and installing `psycopg`.
+### Database backups (read this before copying anything)
+
+The database runs in **WAL mode**, so `cp data/flowboard.sqlite3` is not a
+backup: recent commits live in `data/flowboard.sqlite3-wal` until a checkpoint,
+and a copy of the main file alone can be far behind the live database (on
+2026-09-12 the main file was a whole migration behind while the service was
+serving fine). Use the online-backup command, which snapshots the live database
+WAL included, verifies it and writes a SHA-256 beside it:
+
+```bash
+sudo -u flowboard /var/www/Flowboard/.venv/bin/python -m app.cli backup            # data/flowboard.sqlite3.bak-v<version>-<ts>
+sudo -u flowboard /var/www/Flowboard/.venv/bin/python -m app.cli backup --to /root/backups/flowboard/$(date +%Y%m%d-%H%M%S)/flowboard.sqlite3 --keep 14
+sha256sum -c data/flowboard.sqlite3.bak-*.sha256
+```
+
+Run it **before every migration**. If you must copy files by hand, copy
+`flowboard.sqlite3`, `-wal` and `-shm` together, or stop the service first.
+
+Postgres can be used instead by setting
+`FLOWBOARD_DATABASE_URL=postgresql+psycopg://…` and installing `psycopg` (then
+back it up with `pg_dump`, not this command).
 
 ## Cloudflare
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.4.0 — 2026-09-12
+
+* **"Assigned to you" in the morning digest.** Tasks now remember when they were assigned and by whom (`assigned_at` / `assigned_by_id`, stamped in `tasks.update_task`, so the board UI and the assistant both feed it). The digest opens with what somebody else put on your plate since the last one — *"2 tasks were assigned to you on Launch by Priya"* — in the plain digest, in the AI briefing and in the subject line. Self-assignments are not reported; the window is the previous digest (24 h for a first one, never more than a week); and a new assignment on its own is enough to send an *only when something is due* digest.
+* **Contact support.** Every page's footer links to `/support`: a category, your message, and an email address to reply to. It works signed out — the person who cannot sign in is the one who most needs it — and attaches the version, the page you came from and your browser automatically. The report is emailed to `FLOWBOARD_SUPPORT_EMAIL` (default: the `EMAIL_FROM` address) with your address in `Reply-To`. CSRF, a honeypot, CR/LF-stripped headers, length caps and an hourly limit per user or client IP (`FLOWBOARD_SUPPORT_MAX_PER_HOUR`, default 5) keep the open endpoint boring.
+* **`python -m app.cli backup`** — a real backup. The database runs in WAL mode, so copying `flowboard.sqlite3` alone can miss everything still in `-wal`: on the server the main file was a whole migration behind the live database. The command uses SQLite's online-backup API (consistent, WAL included, service running), verifies the result, writes a SHA-256 beside it and can prune with `--keep N`. `docs/DEPLOYMENT.md` and `docs/ROLLBACK.md` now describe backup and restore properly — including deleting the stale `-wal`/`-shm` when restoring.
+* Migration `0005` (`tasks.assigned_at`, `tasks.assigned_by_id`).
+
 ## 2.3.0 — 2026-09-12
 
 * **Board invitations.** Board settings → Members: invite by email with a role, see and revoke pending invitations, change a member's role, remove a member, and (as a member) leave a board. The invited person does not need an account yet — they register with that address and the invitation is waiting at `/invites`, also shown as a ✉ badge in the top bar. The emailed link carries a 256-bit token stored only as a hash: 14-day expiry, single use, and it can only be redeemed by the address it was sent to. Re-inviting rotates the token; removing a member (or leaving) unassigns their tasks on that board so the work re-plans against the owner's capacity.

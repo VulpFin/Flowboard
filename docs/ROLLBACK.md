@@ -34,8 +34,29 @@ apachectl configtest && systemctl daemon-reload && systemctl restart flowboard &
 ```
 
 The 1.x data file `flowboard_tasks.json` is still in place (2.0 only *reads*
-it during import), so tasks are intact. The 2.0 SQLite database
+it during import), so tasks are intact. The 2.x SQLite database
 (`/var/www/Flowboard/data/flowboard.sqlite3`) can be kept for later.
+
+## Restoring the 2.x database from a backup
+
+Backups made with `python -m app.cli backup` are complete single files (the
+online-backup API folds in the WAL). To restore one:
+
+```bash
+systemctl stop flowboard
+cd /var/www/Flowboard/data
+sha256sum -c flowboard.sqlite3.bak-<version>-<ts>.sha256
+mv flowboard.sqlite3 flowboard.sqlite3.before-restore
+rm -f flowboard.sqlite3-wal flowboard.sqlite3-shm     # stale WAL from the old file must not survive
+cp flowboard.sqlite3.bak-<version>-<ts> flowboard.sqlite3
+chown flowboard:flowboard flowboard.sqlite3
+systemctl start flowboard && curl -fsS https://flowboard.fyi/healthz
+```
+
+Deleting the `-wal`/`-shm` files is the step people forget: leaving them next to
+a restored database mixes two different histories. Backups taken by copying the
+main file alone (pre-2.4 practice) may be missing recent commits — check with
+`select version_num from alembic_version` before trusting one.
 
 ## Roll back only the domain change (keep 2.0)
 

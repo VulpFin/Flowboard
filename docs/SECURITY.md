@@ -25,3 +25,12 @@
   prompt bodies only when explicitly enabled; API keys never.
 * **Process**: uvicorn runs as an unprivileged `flowboard` user with systemd
   hardening (`NoNewPrivileges`, `ProtectSystem=full`, `PrivateTmp`).
+* **Invitations**: 256-bit tokens stored hashed, 14-day expiry, single use, and
+  redeemable only by the address they were sent to; re-inviting rotates the
+  token. Only board owners/admins may invite, change roles or remove members.
+* **Support form** (`/support`, open to signed-out visitors by design): CSRF +
+  honeypot, message and header values length-capped and stripped of CR/LF (no
+  header injection), the reporter's address goes in `Reply-To` and never in
+  `From`, and an hourly cap per user / per client IP
+  (`FLOWBOARD_SUPPORT_MAX_PER_HOUR`). Diagnostics are taken from what the
+  server knows (version, path, user agent), not from form input.

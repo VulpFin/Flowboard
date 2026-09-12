@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from sqlalchemy import select
@@ -120,26 +120,49 @@ def _boards_for(db: Session, user: User, cfg: Dict[str, Any]) -> List[Board]:
     return [b for b in boards if not chosen or b.id in chosen]
 
 
+def _since(user: User, cfg: Dict[str, Any], *, now: Optional[datetime] = None) -> datetime:
+    """Naive-UTC cutoff for "new since the last digest": the moment yesterday's
+    digest went out, or 24 h ago for a first one, never more than a week back."""
+    local_now = clock.local_now(user, now=now)
+    start = local_now - timedelta(hours=24)
+    last = cfg.get("last_sent_on")
+    if last:
+        try:
+            sent_day = date.fromisoformat(last)
+            start = local_now.replace(year=sent_day.year, month=sent_day.month, day=sent_day.day,
+                                      hour=int(cfg.get("hour") or 0), minute=0, second=0, microsecond=0)
+        except ValueError:
+            pass
+    floor = local_now - timedelta(days=7)
+    return max(start, floor).astimezone(timezone.utc).replace(tzinfo=None)
+
+
 def gather(db: Session, user: User, *, now: Optional[datetime] = None) -> Dict[str, Any]:
     """Everything the digest talks about, for both the AI and the plain path."""
     cfg = load(user)
     today = clock.local_today(user, now=now)
+    since = _since(user, cfg, now=now)
     boards = _boards_for(db, user, cfg)
     scheduled: List[Tuple[Task, Board]] = []
     overdue: List[Tuple[Task, Board]] = []
     due_today: List[Tuple[Task, Board]] = []
     open_tasks: List[Tuple[Task, Board]] = []
+    newly_assigned: List[Tuple[Task, Board]] = []
     for b in boards:
         for t in task_service.list_tasks(db, b, include_done=False):
             if schedule_service.effective_owner_id(t, b) != user.id:
                 continue
             open_tasks.append((t, b))
+            if (t.assigned_to_id == user.id and t.assigned_at is not None and t.assigned_at > since
+                    and t.assigned_by_id not in (None, user.id)):
+                newly_assigned.append((t, b))   # somebody else put this on your plate
             if t.scheduled_date == today:
                 scheduled.append((t, b))
             if t.is_overdue:
                 overdue.append((t, b))
             elif t.due_at is not None and t.due_at.date() == today:
                 due_today.append((t, b))
+    newly_assigned.sort(key=lambda tb: tb[0].assigned_at or datetime.min)
     scheduled.sort(key=lambda tb: (clock.minutes_of_day(tb[0].scheduled_start, 24 * 60) if tb[0].scheduled_start else 24 * 60, -tb[0].importance))
 
     sched_doc = schedule_service.load_schedule(user)
@@ -158,11 +181,14 @@ def gather(db: Session, user: User, *, now: Optional[datetime] = None) -> Dict[s
         "scheduled": scheduled,
         "overdue": overdue,
         "due_today": due_today,
+        "newly_assigned": newly_assigned,
+        "assigned_by": {t.assigned_by_id: db.get(User, t.assigned_by_id) for t, _b in newly_assigned if t.assigned_by_id},
         "open_count": len(open_tasks),
         "capacity": cap,
         "top": top,
         "config": cfg,
-        "has_content": bool(scheduled or overdue or due_today),
+        "since": since,
+        "has_content": bool(scheduled or overdue or due_today or newly_assigned),
     }
 
 
@@ -177,10 +203,33 @@ def _line(t: Task, b: Board, *, with_board: bool) -> str:
     return "".join(bits)
 
 
+def assignment_lines(data: Dict[str, Any]) -> List[str]:
+    """"2 tasks were assigned to you on Launch" - grouped by board, with who."""
+    if not data.get("newly_assigned"):
+        return []
+    by_board: Dict[str, List[Task]] = {}
+    who_by_board: Dict[str, set] = {}
+    for t, b in data["newly_assigned"]:
+        by_board.setdefault(b.name, []).append(t)
+        giver = (data.get("assigned_by") or {}).get(t.assigned_by_id)
+        if giver is not None:
+            who_by_board.setdefault(b.name, set()).add(giver.display_name or giver.username)
+    out = []
+    for name, tasks in by_board.items():
+        who = ", ".join(sorted(who_by_board.get(name, ()))) or "someone"
+        n = len(tasks)
+        out.append(f"{n} task{'s' if n != 1 else ''} {'were' if n != 1 else 'was'} assigned to you on {name} by {who}:")
+        out += [f"  - {t.title} ({t.estimate_min} min{', due ' + t.due if t.due else ''})" for t in tasks]
+    return out
+
+
 def plain_text(data: Dict[str, Any]) -> str:
     cap = data["capacity"]
     many = len(data["boards"]) > 1
     out = [f"{data['weekday']} {data['date'].isoformat()}", ""]
+    assigned = assignment_lines(data)
+    if assigned:
+        out += assigned + [""]
     if data["scheduled"]:
         out.append(f"Scheduled today ({len(data['scheduled'])}):")
         out += [f"  - {_line(t, b, with_board=many)}" for t, b in data["scheduled"]]
@@ -221,7 +270,10 @@ def ai_text(db: Session, user: User, data: Dict[str, Any]) -> Optional[str]:
             for t in task_service.list_tasks(db, b, include_done=False):
                 if t not in tasks:
                     tasks.append(t)
-        msgs = build_messages(board, tasks[:200], prompt + "\n\nWrite it as a short email I can read on my phone: a couple of sentences, then a short list. Do not propose any changes.", user=user, db=db)
+        extra = ""
+        if data.get("newly_assigned"):
+            extra = "\n\nMention first, in one sentence, that this landed on my plate since the last briefing:\n" + "\n".join(assignment_lines(data))
+        msgs = build_messages(board, tasks[:200], prompt + extra + "\n\nWrite it as a short email I can read on my phone: a couple of sentences, then a short list. Do not propose any changes.", user=user, db=db)
         res = client.chat(msgs, operation="digest", max_tokens=700)
         text = (res.content or "").strip()
         return text or None
@@ -242,6 +294,8 @@ def build(db: Session, user: User, *, now: Optional[datetime] = None, use_ai: bo
     else:
         body = body + "\n\n" + plain_text(data)
     counts = []
+    if data["newly_assigned"]:
+        counts.append(f"{len(data['newly_assigned'])} newly assigned")
     if data["scheduled"]:
         counts.append(f"{len(data['scheduled'])} scheduled")
     if data["overdue"]:
