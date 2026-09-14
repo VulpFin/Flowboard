@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.4.1 — 2026-09-14
+
+* **The assistant stays inside its panel.** The model picker used to size itself to its longest option, so a name like *Gemini 2.5 Computer Use Preview 10-2025 (fast, vision)* pushed the select past the edge of the 380px sidebar. It now takes the width it is given.
+* **The model badge tells the truth.** The badge beside *Assistant* showed the raw `provider:model` ref and never changed, so it could disagree with the picker about what a request would actually use. It now shows the model's name (the ref moves to the tooltip), follows the picker, and the picker starts on the account default on every load instead of on whatever the browser restored.
+* **An unplanned board no longer shows an empty panel the height of a real plan** — empty, it is one quiet line; once a plan arrives it becomes an ordinary panel.
+* Column headers keep their task count beside the name instead of letting a long context name wrap it onto its own line.
+
 ## 2.4.0 — 2026-09-12
 
 * **"Assigned to you" in the morning digest.** Tasks now remember when they were assigned and by whom (`assigned_at` / `assigned_by_id`, stamped in `tasks.update_task`, so the board UI and the assistant both feed it). The digest opens with what somebody else put on your plate since the last one — *"2 tasks were assigned to you on Launch by Priya"* — in the plain digest, in the AI briefing and in the subject line. Self-assignments are not reported; the window is the previous digest (24 h for a first one, never more than a week); and a new assignment on its own is enough to send an *only when something is due* digest.
