@@ -228,15 +228,27 @@
     // model picker: grouped by provider/family, only configured providers
     const picker = document.getElementById('model-picker');
     if (picker) {
+      const badge = document.getElementById('model-badge');
+      const defaultRef = badge ? (badge.dataset.defaultRef || '') : '';
+      const names = {};
+      // the badge always names the model this request will actually use, so the
+      // heading and the picker can never tell you two different things
+      function showModel(ref) {
+        if (!badge) return;
+        badge.textContent = names[ref] || ref;
+        badge.title = (ref === defaultRef ? 'Model this request will use (board \u2192 account \u2192 provider default): ' : 'Model this request will use: ') + ref;
+      }
+      showModel(defaultRef);
       fetch('/api/ai/models', { credentials: 'same-origin' }).then((r) => r.json()).then(function (data) {
         (data.providers || []).forEach(function (p) {
           (p.groups || []).forEach(function (g) {
             const og = document.createElement('optgroup');
-            og.label = p.provider_name + ' · ' + g.family;
+            og.label = p.provider_name + ' \u00b7 ' + g.family;
             g.models.forEach(function (m) {
               const o = document.createElement('option');
               o.value = m.ref;
               o.textContent = m.name + (m.tags && m.tags.length ? ' (' + m.tags.join(', ') + ')' : '');
+              names[m.ref] = m.name;
               og.appendChild(o);
             });
             picker.appendChild(og);
@@ -244,10 +256,16 @@
         });
         const manage = document.createElement('option');
         manage.value = '__manage';
-        manage.textContent = '⚙ Manage providers…';
+        manage.textContent = '\u2699 Manage providers\u2026';
         picker.appendChild(manage);
+        const def = picker.querySelector('option[value=""]');
+        if (def && names[defaultRef]) def.textContent = 'Default (' + names[defaultRef] + ')';
+        // a fresh page starts on the default, whatever the browser restored
+        picker.value = '';
+        showModel(defaultRef);
         picker.addEventListener('change', function () {
-          if (picker.value === '__manage') window.location.href = '/settings/ai-providers';
+          if (picker.value === '__manage') { window.location.href = '/settings/ai-providers'; return; }
+          showModel(picker.value || defaultRef);
         });
       }).catch(function () {});
     }
@@ -282,7 +300,12 @@
     initMobile();
   }
   document.addEventListener('DOMContentLoaded', init);
-  document.body.addEventListener('htmx:afterSwap', init);
+  document.body.addEventListener('htmx:afterSwap', function (e) {
+    // once a plan has been computed the panel is a panel, not a hint
+    const plan = document.getElementById('plan');
+    if (plan && e.target === plan) plan.classList.remove('empty');
+    init(e);
+  });
   document.body.addEventListener('htmx:responseError', function (e) {
     const status = e.detail.xhr.status;
     if (status === 403) alert('Request rejected (403). Reload the page and try again.');

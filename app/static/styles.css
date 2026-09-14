@@ -75,10 +75,18 @@ button:hover{background:var(--card)}
 .actions{display:flex;flex-wrap:wrap;gap:.25rem;margin-top:.4rem;align-items:center}
 .actions button{padding:.3rem .5rem;font-size:.85rem}
 .editform input,.editform select,.editform textarea{font-size:.9rem}
-.plan{border-style:dashed}
 .plan ol{padding-left:1.2rem}
+/* an empty plan is a hint, not an empty panel the size of the board */
+.plan.empty{border-style:dashed;padding:.55rem .9rem;border-radius:.8rem}
+.plan.empty p{margin:0;font-size:.9rem}
 /* assistant */
 .assistant textarea{width:100%}
+/* the model picker takes the width it is given, never more: long model names
+   used to push the select past the edge of the panel */
+.assistant .row{flex-wrap:wrap}
+.assistant select,.assistant #model-picker{flex:1 1 12rem;min-width:0;max-width:100%}
+.assistant h3{display:flex;align-items:baseline;gap:.4rem;flex-wrap:wrap}
+.assistant h3 .tag{min-width:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .assistant .quick{display:flex;flex-wrap:wrap;gap:.3rem}
 .chip{font-size:.78rem;padding:.25rem .5rem;border-radius:1rem;background:#1c2350;border:1px solid var(--line)}
 .htmx-indicator{display:none;color:var(--accent)}
@@ -113,6 +121,9 @@ tr.current{background:#131a3c}
 .boardtools { float: right; display: inline-flex; gap: .35rem; }
 button.mini, input.mini, select.mini { font-size: .78rem; padding: .15rem .45rem; }
 .colhead { cursor: pointer; user-select: none; display: flex; align-items: center; gap: .4rem; }
+.colhead .colname { flex: 0 1 auto; min-width: 0; overflow-wrap: anywhere; }
+.colhead .colcount { flex: 0 0 auto; white-space: nowrap; }
+.colhead .caret { flex: 0 0 auto; }
 .colhead .caret { display: inline-block; transition: transform .15s; }
 .col.collapsed .colhead .caret { transform: rotate(-90deg); }
 .col.collapsed .dcol { display: none; }

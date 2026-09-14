@@ -15,7 +15,7 @@
   {% for ctx, tasks in columns.items() %}
   {% set ns = namespace(mins=0) %}{% for t in tasks %}{% set ns.mins = ns.mins + t.estimate_min %}{% endfor %}
   <div class="col" data-context="{{ ctx }}">
-    <h3 class="colhead" role="button" tabindex="0" title="Click to collapse / expand this list"><span class="caret">▾</span> {{ ctx }} <span class="muted small">{{ tasks|length }} · {{ ns.mins }}m</span></h3>
+    <h3 class="colhead" role="button" tabindex="0" title="Click to collapse / expand this list"><span class="caret">▾</span> <span class="colname">{{ ctx }}</span> <span class="muted small colcount">{{ tasks|length }} · {{ ns.mins }}m</span></h3>
     <ul class="dcol" id="col-{{ ctx|replace(' ','_')|lower }}">
       {% for t in tasks %}
       <li class="cardwrap" data-task="{{ t.id }}">

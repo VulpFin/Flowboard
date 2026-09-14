@@ -47,12 +47,12 @@
 
 {% include "boards/_board.html" %}
 
-<section id="plan" class="plan panel"><p class="muted">Use <b>Plan</b> to compute the best path through your open tasks.</p></section>
+<section id="plan" class="plan panel empty"><p class="muted">Use <b>Plan</b> to compute the best path through your open tasks.</p></section>
 </div>
 
 <aside class="sidecol">
   <section class="panel assistant" id="assistant">
-    <h3>Assistant {% if ai_model %}<span class="tag" title="Effective model (board → account → provider default)">{{ ai_model }}</span>{% endif %}</h3>
+    <h3>Assistant {% if ai_model %}<span class="tag" id="model-badge" data-default-ref="{{ ai_model }}" title="Model this request will use (board → account → provider default): {{ ai_model }}">{{ ai_model }}</span>{% endif %}</h3>
     {% if ai_model %}
     <form hx-post="/boards/{{ board_ref }}/ai/ask" hx-target="#assistant-out" hx-swap="afterbegin" hx-indicator="#ai-spinner" class="stack" id="ask-form">
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
