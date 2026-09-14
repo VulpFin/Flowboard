@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}FAQ · {{ site_name }}{% endblock %}
+{% block content %}
+<article class="panel prose">
+  <h1>Frequently asked questions</h1>
+
+  <h2>What is Plan actually doing?</h2>
+  <p>
+    It fills a time budget. Given your open tasks — each with an estimate, an importance, an energy
+    level, a due date and any dependencies — it picks an order that gets the most valuable work
+    done inside the window you gave it, keeping related contexts together so you are not
+    ping-ponging between kinds of work. Give it a start context and it will try to begin there.
+  </p>
+
+  <h2>Do I need an AI provider to use Flowboard?</h2>
+  <p>
+    No. Boards, planning, scheduling and calendars all work without one. The assistant is the only
+    part that needs a key, and it stays switched off until you add one in
+    <a href="/settings/ai-providers">AI providers</a>.
+  </p>
+
+  <h2>Why my own API key instead of a subscription?</h2>
+  <p>
+    Because it is cheaper and more honest: you pay your provider directly at their rate, you choose
+    the model, and you can see what each request cost. We never put our keys in your account.
+  </p>
+
+  <h2>Which models can I use?</h2>
+  <p>
+    Whichever ones your configured providers offer — OpenAI, Anthropic, Google Gemini, Groq,
+    OpenRouter and others are supported. The picker beside the assistant chooses a model for one
+    request; your account default handles the rest, and a board can override both.
+  </p>
+
+  <h2>Does the assistant change my board on its own?</h2>
+  <p>
+    No. It proposes a changeset and you approve or reject it. Nothing moves until you say so, and
+    the <a href="/boards">activity log</a> on each board records what was applied.
+  </p>
+
+  <h2>How do calendars work?</h2>
+  <p>
+    Two ways. Every board publishes an <code>.ics</code> feed you can subscribe to from any calendar
+    app — that link is secret, so treat it like a password and rotate it in board settings if it
+    leaks. Or connect Google Calendar or Microsoft 365 in
+    <a href="/settings/calendars">Settings → Calendars</a> and push individual tasks into real
+    events; connected calendars also feed your busy times back into the planner so it stops
+    scheduling over meetings.
+  </p>
+
+  <h2>Can I share a board?</h2>
+  <p>
+    Yes — board settings → members. Invite by email with a role (admin, editor or viewer); they do
+    not need an account yet, and the invitation waits for them. Boards other people share with you
+    appear as <code>owner~board</code> so two boards called "personal" never collide.
+  </p>
+
+  <h2>What is the morning digest?</h2>
+  <p>
+    A daily email with what is due, what is overdue, what somebody assigned you since the last one,
+    and — if you have a provider configured — a short written briefing. Turn it on or off in
+    account settings.
+  </p>
+
+  <h2>Do I need a TG11 account?</h2>
+  <p>
+    No, but it helps: one sign-in across the TG11 services, and two-factor authentication if you
+    enable it there. A local Flowboard password works too.
+  </p>
+
+  <h2>Can I get my data out?</h2>
+  <p>
+    Boards export as <code>.ics</code>, and you can ask <a href="/support">support</a> for a full
+    export of your account at any time. Flowboard is AGPL-3.0 software — you can also run your own
+    copy.
+  </p>
+
+  <h2>Is it free?</h2>
+  <p>
+    Yes. If that ever changes you will get notice first, and nothing you stored gets held hostage.
+  </p>
+
+  <h2>Something is broken.</h2>
+  <p>
+    Check the <a href="/status">status page</a>, then tell us through
+    <a href="/support">support</a> — it works even when you cannot sign in, and it attaches the
+    version and the page you came from automatically.
+  </p>
+</article>
+{% endblock %}

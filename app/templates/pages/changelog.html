@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Changelog · {{ site_name }}{% endblock %}
+{% block content %}
+<article class="panel prose changelog">
+  {% if body %}
+    {{ body|safe }}
+  {% else %}
+    <h1>Changelog</h1>
+    <p class="muted">The changelog file is not readable on this server right now.</p>
+  {% endif %}
+  <p class="muted small">
+    Flowboard {{ app_version }} · every release is also a commit; the source is AGPL-3.0.
+  </p>
+</article>
+{% endblock %}

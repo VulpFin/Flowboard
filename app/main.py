@@ -22,6 +22,7 @@ from .web.routers import ai as ai_router
 from .web.routers import auth as auth_router
 from .web.routers import boards as boards_router
 from .web.routers import calendars as calendars_router
+from .web.routers import pages as pages_router
 from .web.routers import settings as settings_router
 from .web.routers import support as support_router
 from .web.routers import tasks as tasks_router
@@ -91,6 +92,7 @@ def create_app() -> FastAPI:
     static_dir = os.path.join(os.path.dirname(__file__), "static")
     app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
+    app.include_router(pages_router.router)
     app.include_router(auth_router.router)
     app.include_router(boards_router.router)
     app.include_router(tasks_router.router)

@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Guidelines · {{ site_name }}{% endblock %}
+{% block content %}
+<article class="panel prose">
+  <h1>Guidelines</h1>
+  {% include "pages/_meta.html" %}
+
+  <p>
+    Flowboard is mostly a private workspace, so these are short. They cover the places where what
+    you do reaches somebody else: shared boards, invitations, calendar feeds and the mail the
+    service sends on your behalf.
+  </p>
+
+  <h2>Sharing a board</h2>
+  <ul>
+    <li>Invite people who expect to hear from you. An invitation sends them mail with your name on it.</li>
+    <li>Give the lowest role that works — a viewer cannot reorganise your week by accident.</li>
+    <li>Do not put someone else's personal information on a shared board without their agreement.</li>
+    <li>If you are asked to stop inviting somebody, stop.</li>
+  </ul>
+
+  <h2>Content</h2>
+  <ul>
+    <li>Nothing illegal, and nothing that exists to harm or harass a person.</li>
+    <li>No malware, exploit code or stolen credentials, including in task notes.</li>
+    <li>Treat a shared board like a shared room: your colleagues are reading it.</li>
+  </ul>
+
+  <h2>The assistant</h2>
+  <ul>
+    <li>Use your own provider credentials. Do not put somebody else's key into your account.</li>
+    <li>Read what it proposes before you approve it — it is your board that changes.</li>
+    <li>Do not use it to generate abuse, spam or anything your provider's own policy forbids.</li>
+  </ul>
+
+  <h2>Being a good guest on the service</h2>
+  <ul>
+    <li>No scraping, credential stuffing, or automated hammering of the API or the planner.</li>
+    <li>No probing for vulnerabilities against the live service. If you find one, tell us: email
+      <a href="mailto:support@tg11.org">support@tg11.org</a> with enough detail to reproduce it, give
+      us a reasonable chance to fix it, and do not take other people's data while you look.</li>
+    <li>Do not use calendar feeds or digests as a mail relay.</li>
+  </ul>
+
+  <h2>What happens when something goes wrong</h2>
+  <p>
+    Most problems are a misunderstanding and end with an email. Beyond that, and in proportion to
+    what happened: a warning, removal of the offending content, losing a feature, suspension of the
+    account, and — for anything illegal or aimed at hurting people — immediate removal and a report
+    where the law requires one. If you think we got it wrong, reply to the notice or write to
+    support; a person reads it.
+  </p>
+
+  <p class="muted small">
+    These guidelines are not a complete list. We may act on behaviour that clearly harms the
+    service or the people using it even if it is not written here word for word.
+  </p>
+</article>
+{% endblock %}

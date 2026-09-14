@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}About · {{ site_name }}{% endblock %}
+{% block content %}
+<article class="panel prose">
+  <h1>About Flowboard</h1>
+
+  <p>
+    Flowboard is a planning board for people whose work does not fit a tidy list. You write down
+    what needs doing, how long you think it will take, how much it matters and what kind of energy
+    it needs — and Flowboard works out an order you can actually follow inside the time you have.
+  </p>
+
+  <h2>What it does</h2>
+  <ul>
+    <li><b>Boards and tasks</b> grouped by context, with estimates, importance, energy and dependencies.</li>
+    <li><b>Plan</b> computes the best path through your open tasks within a time budget, instead of
+      handing you a list sorted by due date and wishing you luck.</li>
+    <li><b>Schedule</b> lays that out day by day against your working hours, and rolls unfinished
+      work forward.</li>
+    <li><b>Calendars</b> — export any board as an <code>.ics</code> feed, or connect Google Calendar
+      or Microsoft 365 and push a task into a real calendar slot.</li>
+    <li><b>Shared boards</b> with invitations and roles, so a board can belong to more than one person.</li>
+    <li><b>An assistant</b> that can summarise, split, prioritise and reschedule — on your own API
+      key, and it never changes anything until you approve the change it proposes.</li>
+  </ul>
+
+  <h2>How it is built</h2>
+  <p>
+    Flowboard is a small, self-hostable Python application: FastAPI, SQLAlchemy and SQLite, with
+    server-rendered pages and no build step. It is licensed
+    <a href="https://www.gnu.org/licenses/agpl-3.0.html" rel="noopener">AGPL-3.0</a>, which means
+    anyone running it as a service has to make their changes available too.
+  </p>
+
+  <h2>Two things it deliberately does not do</h2>
+  <ul>
+    <li><b>No operator AI keys.</b> Every AI call uses credentials you supply, encrypted at rest, and
+      the assistant is off until you add one. You choose the provider and the model; we do not
+      resell anyone's tokens or quietly route your board through ours.</li>
+    <li><b>No advertising, no tracking pixels, no selling data.</b> The only analytics are the
+      operational logs needed to keep the service running.</li>
+  </ul>
+
+  <h2>Who runs it</h2>
+  <p>
+    Flowboard is operated by <b>TG11 LLC</b>, doing business as VulpFin. It shares a sign-in with the
+    other TG11 services through <a href="https://accounts.tg11.org">TG11 Accounts</a>, so one
+    identity works across them — each service still keeps its own data.
+  </p>
+  <p>
+    Questions, bugs and feature requests: <a href="/support">contact support</a> or email
+    <a href="mailto:support@tg11.org">support@tg11.org</a>.
+  </p>
+</article>
+{% endblock %}

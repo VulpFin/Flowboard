@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Status · {{ site_name }}{% endblock %}
+{% block content %}
+<article class="panel prose">
+  <h1>Service status</h1>
+
+  <p class="statusline">
+    <span class="tag {{ 'ok' if overall == 'ok' else 'bad' }}">{{ overall|upper }}</span>
+    <span class="muted small">checked {{ checked_at }} · Flowboard {{ version }}</span>
+  </p>
+
+  {% if overall == 'ok' %}
+  <p>Flowboard is answering requests and its database is responding.</p>
+  {% else %}
+  <p>
+    Flowboard is up but something it depends on is not answering. Work already in your browser may
+    fail to save. We can see this too; if it persists, <a href="/support">tell us</a> what you were
+    doing.
+  </p>
+  {% endif %}
+
+  <h2>What this page checks</h2>
+  <p>
+    That the application is serving this page, and that the database answers a query. It reports a
+    summary on purpose — detailed readiness diagnostics stay behind the operator's tooling rather
+    than being published to anyone who asks.
+  </p>
+
+  <h2>What it cannot tell you</h2>
+  <p>
+    Whether <b>your</b> AI provider or calendar provider is having an outage. Those calls go out
+    with your credentials to a third party, so a failure there shows up as an error on the action
+    you tried, not here — check the provider's own status page. The same goes for mail delivery
+    delays.
+  </p>
+
+  <h2>Where interruptions get announced</h2>
+  <p>
+    Planned work and anything notable that broke is written up in the
+    <a href="/changelog">changelog</a>. For anything else, <a href="/support">support</a> reaches a
+    person and works even when you cannot sign in.
+  </p>
+
+  <p class="muted small">
+    Machine-readable: <a href="/healthz"><code>/healthz</code></a>.
+  </p>
+</article>
+{% endblock %}

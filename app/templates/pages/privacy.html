@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% block title %}Privacy Policy · {{ site_name }}{% endblock %}
+{% block content %}
+<article class="panel prose">
+  <h1>Privacy Policy</h1>
+  {% include "pages/_meta.html" %}
+
+  <p>
+    Flowboard is operated by <b>TG11 LLC</b>, doing business as VulpFin. This page says what the
+    service stores, why, who else can see it and how to get rid of it. There is no advertising
+    here and nothing is sold to anyone.
+  </p>
+
+  <h2>1. What we store</h2>
+  <ul>
+    <li><b>Account:</b> email address, username, display name, and either a password hash or a link
+      to your TG11 account. Never a password in the clear.</li>
+    <li><b>Preferences:</b> timezone, working hours and day length, board defaults, and the model
+      you picked as your default.</li>
+    <li><b>Your work:</b> boards, tasks, estimates, notes, reflections, activity history,
+      invitations and membership.</li>
+    <li><b>AI provider credentials</b>, if you add them: encrypted with AES-256-GCM under a key held
+      by the server, bound to your account and the provider. They are decrypted only to make a
+      request you asked for, and never shown back to you in full.</li>
+    <li><b>Calendar connections</b>, if you make them: the account's email address, the calendar you
+      chose, and the OAuth tokens — stored encrypted the same way — plus a short cache of busy
+      times so the planner does not re-fetch them constantly.</li>
+    <li><b>AI usage records</b> (model, token counts, cost estimate, timestamps) so you can see what
+      the assistant cost you. You can turn this off in settings.</li>
+    <li><b>Operational data:</b> IP address, user agent, and server logs of requests and errors.</li>
+    <li><b>Support messages</b> you send us, with the version and page you sent them from.</li>
+  </ul>
+
+  <h2>2. What leaves the server</h2>
+  <p>This is the part worth reading carefully.</p>
+  <ul>
+    <li><b>AI providers.</b> When you use the assistant, the board content that request needs — task
+      titles, notes, estimates and dates — is sent to the provider you chose (OpenAI, Anthropic,
+      Google, Groq, OpenRouter, or whichever you configured), using your key. What they do with it
+      is governed by their policy, not ours. If that is not acceptable for a piece of work, do not
+      run the assistant on it.</li>
+    <li><b>Calendars.</b> When you push a task, its title, notes, and time are sent to Google or
+      Microsoft as an event. Busy-time reads come back the other way.</li>
+    <li><b>Email.</b> Digests, invitations and password mail go out through our mail provider.</li>
+    <li><b>TG11 Accounts.</b> Signing in with TG11 exchanges an identity token; Flowboard never sees
+      your TG11 password, and no other TG11 service can read this one's database.</li>
+    <li><b>Calendar feed links.</b> An <code>.ics</code> feed URL contains a secret token: anyone who
+      has the link can read that board's dated tasks. Rotate or revoke it in board settings.</li>
+  </ul>
+  <p>Nothing else is shared, except where the law requires it or to protect the service and its users.</p>
+
+  <h2>3. Cookies</h2>
+  <p>
+    One signed session cookie to keep you logged in, and a CSRF token to stop other sites acting as
+    you. That is the lot — no advertising or analytics cookies. Your browser may also keep small
+    local preferences, like a collapsed column.
+  </p>
+
+  <h2>4. Who can see your work</h2>
+  <p>
+    Your boards are private to you and to the people you invite, at the role you gave them. Operators
+    of this server can technically reach the database — that is true of every hosted service — and
+    we look only when it is needed to fix a fault or answer a support request you raised.
+  </p>
+
+  <h2>5. How long we keep it</h2>
+  <ul>
+    <li>Boards, tasks and account data: while the account exists.</li>
+    <li>Server and access logs: a short operational window, then rotated away.</li>
+    <li>Backups: on a rolling schedule, so deleted content can persist in a backup for a short time
+      after it disappears from the live service.</li>
+    <li>AI usage records: until you clear them or the account is deleted.</li>
+    <li>Support email: kept with the correspondence it belongs to.</li>
+  </ul>
+
+  <h2>6. Deleting things</h2>
+  <ul>
+    <li>Tasks, boards, reflections, AI credentials and calendar connections can all be deleted from
+      inside the app, and deleting a connection deletes its stored tokens.</li>
+    <li>There is no self-serve "delete my account" button yet. Ask through
+      <a href="/support">support</a> and we will delete the account and its boards within 30 days,
+      backups ageing out on their own schedule after that.</li>
+    <li>Ask the same way for a copy of your data and we will send you an export.</li>
+  </ul>
+
+  <h2>7. Security</h2>
+  <p>
+    Passwords are hashed, sessions are signed, provider credentials and calendar tokens are
+    encrypted at rest, and the service is served over HTTPS. Tokens are never written to logs. No
+    service can promise perfect security, and we will not pretend otherwise — if something does go
+    wrong in a way that affects you, we will tell you.
+  </p>
+
+  <h2>8. Children</h2>
+  <p>
+    Flowboard is not intended for anyone below the minimum age for digital consent where they live.
+  </p>
+
+  <h2>9. Where it runs</h2>
+  <p>
+    Flowboard runs on servers in the United States. If you use it from elsewhere, your data is
+    processed there.
+  </p>
+
+  <h2>10. Changes</h2>
+  <p>
+    The version and date at the top change when this policy does; material changes are called out
+    in the <a href="/changelog">changelog</a>.
+  </p>
+
+  <h2>11. Contact</h2>
+  <p>
+    Privacy questions, export requests and deletion requests:
+    <a href="mailto:support@tg11.org">support@tg11.org</a>.
+  </p>
+</article>
+{% endblock %}

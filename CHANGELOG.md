@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.5.0 — 2026-09-14
+
+* **The pages a service owes its users.** `/about`, `/terms`, `/privacy`, `/guidelines`, `/faq`, `/status` and `/changelog` join the existing `/support`, all linked from the footer of every page. They render without touching the database (except the one live check on `/status`), so they answer even when the rest of the application is having a bad day.
+* **`/status`** reports a summary — the app is serving, the database answers — and says plainly what it cannot tell you: an outage at your own AI or calendar provider shows up on the action you tried, not here.
+* **`/changelog`** renders this file, so a release note reaches users without being copied into a template by hand.
+* Policy pages carry an effective date and a version in one shared partial, so updating them is one edit rather than seven.
+
 ## 2.4.1 — 2026-09-14
 
 * **The assistant stays inside its panel.** The model picker used to size itself to its longest option, so a name like *Gemini 2.5 Computer Use Preview 10-2025 (fast, vision)* pushed the select past the edge of the 380px sidebar. It now takes the width it is given.

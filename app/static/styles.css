@@ -220,3 +220,20 @@ button.mini, input.mini, select.mini { font-size: .78rem; padding: .15rem .45rem
 .hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
 .footer .supportlink { color: var(--muted); }
 .footer .supportlink:hover { color: var(--text); }
+
+/* ---- information pages (about, policies, status, changelog) ---- */
+.prose{max-width:52rem;margin:0 auto;line-height:1.6}
+.prose h1{margin:.2rem 0 .6rem}
+.prose h2{margin:1.5rem 0 .4rem;font-size:1.05rem;color:#cfe7ff}
+.prose h3{margin:1.2rem 0 .3rem;font-size:1rem;color:#cfe7ff}
+.prose p{margin:.5rem 0}
+.prose ul{padding-left:1.2rem;margin:.4rem 0}
+.prose li{margin:.28rem 0}
+.policy-meta{margin:.2rem 0 1.2rem}
+.statusline{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;margin:.4rem 0 1rem}
+.statusline .tag{font-size:.85rem;padding:.22rem .6rem}
+.changelog h3{margin:0 0 .2rem}
+.changelog h4{margin:1.6rem 0 .3rem;font-size:1rem;color:#cfe7ff;border-bottom:1px solid var(--line);padding-bottom:.3rem}
+.footlinks{display:flex;flex-wrap:wrap;gap:.5rem;justify-content:center;margin-bottom:.45rem}
+.footlinks a{color:var(--muted);text-decoration:none}
+.footlinks a:hover{color:var(--text);text-decoration:underline}
