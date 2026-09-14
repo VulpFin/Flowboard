@@ -15,3 +15,4 @@ test__*.vfheap
 Claude outputs/*
 SSL/*
 client_secret_177844347050-g5pbth765jrffo5u9so56gnaov03mbld.apps.googleusercontent.com.json
+client_secret*.json
