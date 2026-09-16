@@ -16,7 +16,7 @@ from ..models import Board, CalendarConnection, CalendarEventLink, Task, User, u
 from ..security.crypto import get_cipher
 from ..services.tasks import parse_due
 from .ics import content_fingerprint
-from .providers import CalendarProvider, CalendarProviderError, get_provider
+from .providers import CalendarProvider, CalendarProviderError, get_provider, public_error_message
 
 
 def _aad(user_id: str, provider: str) -> str:
@@ -68,7 +68,7 @@ def fresh_token(db: Session, conn: CalendarConnection, provider: Optional[Calend
             token = provider.refresh(token)
         except CalendarProviderError as exc:
             conn.status = "error"
-            conn.status_message = str(exc)[:300]
+            conn.status_message = public_error_message(provider, exc)
             db.flush()
             raise
         _save_token(db, conn, token)
@@ -107,6 +107,10 @@ def set_target_calendar(db: Session, conn: CalendarConnection, calendar_id: str)
 def disconnect(db: Session, conn: CalendarConnection) -> None:
     """Remove the connection and its links.  Events already created remain in
     the external calendar (we do not delete user data on disconnect)."""
+    try:
+        get_provider(conn.provider).revoke(_token(conn))
+    except (CalendarProviderError, ValueError):
+        pass
     for link in db.scalars(select(CalendarEventLink).where(CalendarEventLink.connection_id == conn.id)):
         db.delete(link)
     db.delete(conn)
@@ -162,7 +166,7 @@ def push_task(db: Session, user: User, board: Board, task: Task, conn: CalendarC
     except CalendarProviderError as exc:
         if link is None:
             raise
-        link.sync_status, link.last_error = "error", str(exc)[:500]
+        link.sync_status, link.last_error = "error", public_error_message(provider, exc)
     db.flush()
     return link
 
@@ -189,8 +193,10 @@ def sync_task_links(db: Session, task: Task, board: Board, *, timezone: str = "U
                 provider.update_event(token, link.external_calendar_id, link.external_event_id, event_payload(task, board, timezone=timezone))
                 link.sync_status, link.last_error, link.last_synced_at = "synced", "", utcnow()
                 link.fingerprint = content_fingerprint(task)
-        except (CalendarProviderError, ValueError) as exc:
-            link.sync_status, link.last_error = "error", str(exc)[:500]
+        except CalendarProviderError as exc:
+            link.sync_status, link.last_error = "error", public_error_message(provider, exc)
+        except ValueError:
+            link.sync_status, link.last_error = "error", "Flowboard could not prepare this calendar event."
         out.append(link)
     db.flush()
     return out

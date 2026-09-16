@@ -62,8 +62,8 @@ def test_http_isolation(client, db, alice, bob):
     assert client.get(f"/boards/{b_board.slug}/").status_code == 200
 
 
-def test_login_required_redirect(client):
-    r = client.get("/", follow_redirects=False)
+def test_board_list_requires_login(client):
+    r = client.get("/boards", follow_redirects=False)
     assert r.status_code == 303 and r.headers["location"].startswith("/login")
 
 

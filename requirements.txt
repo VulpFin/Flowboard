@@ -11,4 +11,5 @@ cryptography>=43,<47
 joserfc>=1.0,<2
 itsdangerous>=2.2,<3
 python-dotenv>=1.0,<2
+tzdata>=2024.1
 jsonschema>=4.23,<5

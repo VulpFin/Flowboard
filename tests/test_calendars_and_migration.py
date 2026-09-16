@@ -53,6 +53,28 @@ def test_calendar_connection_ownership_and_token_encryption(db, alice, bob):
     assert cal_links._token(conn)["access_token"] == "ya29.secret"
 
 
+def test_disconnect_revokes_provider_credential_and_removes_local_connection(db, alice, monkeypatch):
+    from app.calendars import providers as provider_module
+
+    called = []
+
+    class FakeProvider(provider_module.CalendarProvider):
+        id = "google"
+        name = "Google Calendar"
+
+        def revoke(self, token):
+            called.append(token["access_token"])
+
+    monkeypatch.setattr(cal_links, "get_provider", lambda _provider_id: FakeProvider())
+    conn = cal_links.store_connection(
+        db, alice, "google", {"access_token": "token-for-revoke", "expires_at": 9999999999},
+        {"email": "a@example.com", "id": "a@example.com"}, "scope",
+    )
+    cal_links.disconnect(db, conn)
+    assert called == ["token-for-revoke"]
+    assert cal_links.get_connection(db, alice, conn.id) is None
+
+
 def test_push_and_sync_with_fake_provider(db, alice, monkeypatch):
     from app.calendars import providers as prov_mod
 

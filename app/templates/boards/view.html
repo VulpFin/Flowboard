@@ -67,7 +67,7 @@
         {% for label, text in quick_prompts %}<button type="button" class="chip" data-prompt="{{ text }}">{{ label }}</button>{% endfor %}
       </div>
     </form>
-    <p class="muted small">The assistant proposes changes; nothing is applied until you approve it. <a href="/boards/{{ board_ref }}/ai/history">History</a> · <a href="/settings/ai-providers">Manage providers</a></p>
+    <p class="muted small">The assistant proposes changes; nothing is applied until you approve it. {% if has_google_calendar %}Scheduling requests may include daily aggregate busy minutes from your connected calendar, never event titles or details. {% endif %}<a href="/boards/{{ board_ref }}/ai/history">History</a> · <a href="/settings/ai-providers">Manage providers</a></p>
     {% else %}
     <p class="muted">Add your own API key for OpenAI, Anthropic, Gemini, Groq, OpenRouter… and the assistant can summarise, prioritise, split and schedule your tasks.</p>
     <a class="btn primary" href="/settings/ai-providers">Set up an AI provider</a>

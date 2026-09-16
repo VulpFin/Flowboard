@@ -22,6 +22,7 @@ h4{margin:.5rem 0 .25rem;color:#cfe7ff}
 .linkbtn:hover{background:var(--card)}
 .usernav{display:flex;gap:.35rem;align-items:center}
 .usernav .linkbtn,.usernav form button.linkbtn{background:var(--panel);color:var(--text);font-weight:400}
+.publicnav{display:flex;gap:.65rem;align-items:center;margin-left:auto;flex-wrap:wrap}.publicnav>a{color:var(--text);text-decoration:none}.publicnav .public-cta{background:var(--accent);color:#06181a;border-color:transparent;font-weight:700}
 /* layout */
 .wrap{padding:1rem;max-width:1400px;margin:0 auto}
 .layout{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:1rem}
@@ -237,3 +238,8 @@ button.mini, input.mini, select.mini { font-size: .78rem; padding: .15rem .45rem
 .footlinks{display:flex;flex-wrap:wrap;gap:.5rem;justify-content:center;margin-bottom:.45rem}
 .footlinks a{color:var(--muted);text-decoration:none}
 .footlinks a:hover{color:var(--text);text-decoration:underline}
+
+/* ---- public home and signed-in dashboard -------------------------------- */
+.home-hero{padding:4.5rem 0 3rem;max-width:52rem}.eyebrow{color:var(--accent);font-size:.85rem;font-weight:700;text-transform:uppercase;margin:0 0 .4rem}.home-hero h1,.dashboard-head h1{font-size:2.6rem;line-height:1.08;margin:.1rem 0 .8rem}.lead{font-size:1.2rem;line-height:1.6;color:#cfe7ff;max-width:46rem}.home-actions{margin-top:1.3rem}.home-band{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1rem;border-top:1px solid var(--line);padding:1.5rem 0}.home-band h2{font-size:1.1rem}.home-band p{line-height:1.6;color:var(--muted)}.home-split{grid-template-columns:repeat(2,minmax(0,1fr))}.home-privacy{grid-template-columns:minmax(0,1fr) auto;align-items:center}.dashboard-head{display:flex;gap:1rem;justify-content:space-between;align-items:end;flex-wrap:wrap;margin:1rem 0 1.5rem}.dashboard-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1rem}.dashboard-list li{display:flex;gap:.75rem;justify-content:space-between;border-bottom:1px solid var(--line);padding:.55rem 0}.dashboard-list li:last-child{border-bottom:0}
+
+@media (max-width:700px){.publicnav{margin-left:0;width:100%;order:3}.home-hero{padding:2.5rem 0 1.75rem}.home-hero h1,.dashboard-head h1{font-size:2rem}.home-band,.home-split,.home-privacy,.dashboard-grid{grid-template-columns:1fr}.home-privacy .home-actions{margin-top:0}}

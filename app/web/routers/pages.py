@@ -19,20 +19,66 @@ from sqlalchemy.orm import Session
 
 from ... import __version__
 from ...db import get_db
+from ...ai.registry import list_specs
+from ...calendars.providers import CALENDAR_PROVIDERS, GOOGLE_CALENDAR_SCOPES
 from ...models import User
+from ...services import auth as auth_service
+from ...services import boards as board_service
+from ...services import tasks as task_service
+from ...calendars import links as calendar_links
 from .. import deps
 from ..mdlite import md_lite
 
 router = APIRouter(tags=["pages"])
 
 # One place to bump when the policies change; every policy page shows it.
-POLICY = {"effective": "2026-09-14", "updated": "2026-09-14", "version": "1.0"}
+POLICY = {"effective": "2026-09-16", "updated": "2026-09-16", "version": "1.1"}
 
 CHANGELOG = Path(__file__).resolve().parents[3] / "CHANGELOG.md"
 
 
 def _page(request: Request, name: str, extra: Optional[Dict[str, Any]] = None):
     return deps.render(request, f"pages/{name}.html", {"policy": POLICY, **(extra or {})})
+
+
+def _integration_context() -> Dict[str, Any]:
+    calendars = []
+    for provider_id, provider_cls in CALENDAR_PROVIDERS.items():
+        provider = provider_cls()
+        calendars.append({
+            "id": provider_id,
+            "name": provider.name,
+            "scopes": provider.scopes.split(),
+            "configured": provider.configured,
+        })
+    return {
+        "calendar_providers": calendars,
+        "google_scopes": GOOGLE_CALENDAR_SCOPES,
+        "ai_providers": [
+            {"id": spec.id, "name": spec.name, "status": spec.status}
+            for spec in list_specs()
+            if spec.status in {"supported", "beta"}
+        ],
+    }
+
+
+@router.get("/")
+def home(request: Request, user: Optional[User] = Depends(deps.get_current_user_optional), db: Session = Depends(get_db)):
+    """Public product page for visitors; practical landing page for members."""
+    if user is None:
+        return _page(request, "home", _integration_context())
+    default_board = auth_service.ensure_default_board(db, user)
+    boards = board_service.list_boards_for_user(db, user)
+    counts = {
+        board.id: task_service.board_stats(task_service.list_tasks(db, board, include_done=True))
+        for board in boards
+    }
+    return deps.render(request, "pages/dashboard.html", {
+        "default_board": default_board,
+        "recent_boards": boards[:6],
+        "counts": counts,
+        "connections": calendar_links.list_connections(db, user),
+    }, db=db)
 
 
 @router.get("/about")
@@ -48,6 +94,16 @@ def terms(request: Request):
 @router.get("/privacy")
 def privacy(request: Request):
     return _page(request, "privacy")
+
+
+@router.get("/third-party-services")
+def third_party_services(request: Request):
+    return _page(request, "third_party_services", _integration_context())
+
+
+@router.get("/oauth-review")
+def oauth_review(request: Request):
+    return _page(request, "oauth_review", _integration_context())
 
 
 @router.get("/guidelines")

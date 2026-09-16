@@ -22,9 +22,9 @@
     <li><b>AI provider credentials</b>, if you add them: encrypted with AES-256-GCM under a key held
       by the server, bound to your account and the provider. They are decrypted only to make a
       request you asked for, and never shown back to you in full.</li>
-    <li><b>Calendar connections</b>, if you make them: the account's email address, the calendar you
-      chose, and the OAuth tokens — stored encrypted the same way — plus a short cache of busy
-      times so the planner does not re-fetch them constantly.</li>
+    <li><b>Calendar connections</b>, if you make them: the account label available from the
+      provider, the calendar you chose, and OAuth tokens — stored encrypted the same way — plus a
+      15-minute cache of busy time intervals so the planner does not re-fetch them constantly.</li>
     <li><b>AI usage records</b> (model, token counts, cost estimate, timestamps) so you can see what
       the assistant cost you. You can turn this off in settings.</li>
     <li><b>Operational data:</b> IP address, user agent, and server logs of requests and errors.</li>
@@ -40,7 +40,7 @@
       is governed by their policy, not ours. If that is not acceptable for a piece of work, do not
       run the assistant on it.</li>
     <li><b>Calendars.</b> When you push a task, its title, notes, and time are sent to Google or
-      Microsoft as an event. Busy-time reads come back the other way.</li>
+      Microsoft as an event. Calendar lists and busy-time intervals come back the other way.</li>
     <li><b>Email.</b> Digests, invitations and password mail go out through our mail provider.</li>
     <li><b>TG11 Accounts.</b> Signing in with TG11 exchanges an identity token; Flowboard never sees
       your TG11 password, and no other TG11 service can read this one's database.</li>
@@ -49,21 +49,49 @@
   </ul>
   <p>Nothing else is shared, except where the law requires it or to protect the service and its users.</p>
 
-  <h2>3. Cookies</h2>
+  <h2 id="google-calendar">3. Google Calendar and Google API Services</h2>
+  <p>
+    Google Calendar is optional. If you connect it, Flowboard requests
+    <code>https://www.googleapis.com/auth/calendar.readonly</code> to list calendars and read
+    busy availability, and <code>https://www.googleapis.com/auth/calendar.events</code> to create,
+    update, or delete an event when you explicitly perform that action from a Flowboard task.
+  </p>
+  <p>
+    Flowboard does not import Google Calendar events as Flowboard tasks and does not retain event
+    titles, attendees, or descriptions from Google. It stores the selected calendar list and
+    caches busy time intervals for up to 15 minutes. Google access and refresh tokens remain only
+    while the connection exists and are encrypted at rest. Disconnecting deletes Flowboard's local
+    connection, tokens, availability cache, and event links, and makes a best-effort request to
+    revoke the Google credential. Disconnecting does not delete events that already exist in
+    Google Calendar.
+  </p>
+  <p>
+    Google Calendar event content is not sent to AI providers. If you ask Flowboard's assistant to
+    schedule work, its request may include derived daily busy-minute totals so it can avoid meetings;
+    it never includes Google event titles, attendees, descriptions, calendar identifiers, or OAuth
+    tokens. Flowboard does not use Google Workspace API data to train or improve generalized or
+    foundation AI models.
+  </p>
+  <p>
+    The use of raw or derived user data received from Google Workspace APIs will adhere to the
+    <a href="https://developers.google.com/terms/api-services-user-data-policy" rel="noopener">Google API Services User Data Policy</a>, including the Limited Use requirements.
+  </p>
+
+  <h2>4. Cookies</h2>
   <p>
     One signed session cookie to keep you logged in, and a CSRF token to stop other sites acting as
     you. That is the lot — no advertising or analytics cookies. Your browser may also keep small
     local preferences, like a collapsed column.
   </p>
 
-  <h2>4. Who can see your work</h2>
+  <h2>5. Who can see your work</h2>
   <p>
     Your boards are private to you and to the people you invite, at the role you gave them. Operators
     of this server can technically reach the database — that is true of every hosted service — and
     we look only when it is needed to fix a fault or answer a support request you raised.
   </p>
 
-  <h2>5. How long we keep it</h2>
+  <h2>6. How long we keep it</h2>
   <ul>
     <li>Boards, tasks and account data: while the account exists.</li>
     <li>Server and access logs: a short operational window, then rotated away.</li>
@@ -73,7 +101,7 @@
     <li>Support email: kept with the correspondence it belongs to.</li>
   </ul>
 
-  <h2>6. Deleting things</h2>
+  <h2>7. Deleting things</h2>
   <ul>
     <li>Tasks, boards, reflections, AI credentials and calendar connections can all be deleted from
       inside the app, and deleting a connection deletes its stored tokens.</li>
@@ -83,7 +111,7 @@
     <li>Ask the same way for a copy of your data and we will send you an export.</li>
   </ul>
 
-  <h2>7. Security</h2>
+  <h2>8. Security</h2>
   <p>
     Passwords are hashed, sessions are signed, provider credentials and calendar tokens are
     encrypted at rest, and the service is served over HTTPS. Tokens are never written to logs. No
@@ -91,24 +119,24 @@
     wrong in a way that affects you, we will tell you.
   </p>
 
-  <h2>8. Children</h2>
+  <h2>9. Children</h2>
   <p>
     Flowboard is not intended for anyone below the minimum age for digital consent where they live.
   </p>
 
-  <h2>9. Where it runs</h2>
+  <h2>10. Where it runs</h2>
   <p>
     Flowboard runs on servers in the United States. If you use it from elsewhere, your data is
     processed there.
   </p>
 
-  <h2>10. Changes</h2>
+  <h2>11. Changes</h2>
   <p>
     The version and date at the top change when this policy does; material changes are called out
     in the <a href="/changelog">changelog</a>.
   </p>
 
-  <h2>11. Contact</h2>
+  <h2>12. Contact</h2>
   <p>
     Privacy questions, export requests and deletion requests:
     <a href="mailto:support@tg11.org">support@tg11.org</a>.

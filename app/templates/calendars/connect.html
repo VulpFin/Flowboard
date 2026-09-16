@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Connect {{ provider.name }} · {{ site_name }}{% endblock %}
+{% block content %}
+<section class="panel narrow prose">
+  <h1>Connect {{ provider.name }}</h1>
+  {% if provider.id == 'google' %}
+  <p>Connecting Google Calendar lets Flowboard show the calendars you can use and read busy availability for scheduling. When you explicitly add or update a dated Flowboard task in Google Calendar, Flowboard can create, update, or delete that event.</p>
+  {% else %}
+  <p>Connecting {{ provider.name }} lets Flowboard show available calendars, use busy availability in scheduling, and create or update events when you explicitly add a dated Flowboard task to a calendar.</p>
+  {% endif %}
+  <p>Flowboard stores the resulting access credential encrypted at rest. You can disconnect later from Settings → Calendars; disconnecting removes local credentials and does not delete existing calendar events.</p>
+  <p class="muted small"><a href="/privacy">Privacy Policy</a> · <a href="/third-party-services">Third-Party Services</a></p>
+  <form method="post" action="/calendar/connect/{{ provider.id }}"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="btn primary" type="submit">Continue to {{ provider.name }}</button> <a class="btn" href="/settings/calendars">Cancel</a></form>
+</section>
+{% endblock %}

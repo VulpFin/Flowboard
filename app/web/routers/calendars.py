@@ -5,6 +5,7 @@ push task to calendar, subscription feeds."""
 from __future__ import annotations
 
 import secrets
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
@@ -14,7 +15,8 @@ from sqlalchemy.orm import Session
 
 from ...calendars import feeds, ics
 from ...calendars import links as cal_links
-from ...calendars.providers import CALENDAR_PROVIDERS, CalendarProviderError, get_provider, pkce_pair
+from ...calendars import busy as calendar_busy
+from ...calendars.providers import CALENDAR_PROVIDERS, CalendarProviderError, get_provider, pkce_pair, public_error_message
 from ...config import settings
 from ...db import get_db
 from ...models import Board, User
@@ -40,6 +42,17 @@ def calendars_page(request: Request, user: User = Depends(deps.get_current_user)
 # --- OAuth connect ----------------------------------------------------------
 
 @router.get("/calendar/connect/{provider}")
+def connect_explainer(request: Request, provider: str, user: User = Depends(deps.get_current_user), db: Session = Depends(get_db)):
+    try:
+        prov = get_provider(provider)
+    except CalendarProviderError:
+        raise HTTPException(404, "Unknown calendar provider")
+    if not prov.configured:
+        return deps.redirect(f"/settings/calendars?err={prov.name}+is+not+configured+on+this+server")
+    return deps.render(request, "calendars/connect.html", {"provider": prov}, db=db)
+
+
+@router.post("/calendar/connect/{provider}", dependencies=[Depends(deps.csrf_protect)])
 def connect_start(provider: str, user: User = Depends(deps.get_current_user)):
     try:
         prov = get_provider(provider)
@@ -57,7 +70,7 @@ def connect_start(provider: str, user: User = Depends(deps.get_current_user)):
 @router.get("/calendar/connect/{provider}/callback")
 def connect_callback(request: Request, provider: str, code: Optional[str] = None, state: Optional[str] = None, error: Optional[str] = None, user: User = Depends(deps.get_current_user), db: Session = Depends(get_db)):
     if error:
-        return deps.redirect(f"/settings/calendars?err={error}")
+        return deps.redirect("/settings/calendars?err=Calendar+authorization+was+cancelled+or+could+not+be+completed")
     try:
         flow = _flow.loads(request.cookies.get(FLOW_COOKIE, ""), max_age=600)
     except BadSignature:
@@ -71,7 +84,7 @@ def connect_callback(request: Request, provider: str, code: Optional[str] = None
         conn = cal_links.store_connection(db, user, provider, token, account, prov.scopes)
         cal_links.refresh_calendar_list(db, conn)
     except CalendarProviderError as exc:
-        return deps.redirect(f"/settings/calendars?err={exc}")
+        return deps.redirect(f"/settings/calendars?err={public_error_message(prov, exc)}")
     resp = deps.redirect(f"/settings/calendars?msg={prov.name}+connected+({account.get('email', '')})")
     resp.delete_cookie(FLOW_COOKIE, path="/calendar/connect")
     return resp
@@ -98,7 +111,7 @@ def refresh_conn(conn_id: str, user: User = Depends(deps.get_current_user), db: 
         cal_links.refresh_calendar_list(db, conn)
         conn.status, conn.status_message = "connected", ""
     except CalendarProviderError as exc:
-        return deps.redirect(f"/settings/calendars?err={exc}")
+        return deps.redirect(f"/settings/calendars?err={public_error_message(get_provider(conn.provider), exc)}")
     return deps.redirect("/settings/calendars?msg=Calendar+list+refreshed")
 
 
@@ -112,6 +125,21 @@ def set_busy(conn_id: str, busy_enabled: Optional[str] = Form(None), user: User 
     conn.busy_cache_json, conn.busy_fetched_at = "{}", None  # drop the cache either way
     db.flush()
     return deps.redirect("/settings/calendars?msg=" + ("Meetings+from+this+calendar+now+reduce+your+daily+capacity" if conn.busy_enabled else "This+calendar+no+longer+affects+your+capacity"))
+
+
+@router.get("/calendar/connections/{conn_id}/availability")
+def availability(request: Request, conn_id: str, user: User = Depends(deps.get_current_user), db: Session = Depends(get_db)):
+    """Show real provider free/busy data without retaining event contents."""
+    conn = cal_links.get_connection(db, user, conn_id)
+    if conn is None:
+        raise HTTPException(404, "Connection not found")
+    start = datetime.now(timezone.utc)
+    end = start + timedelta(days=7)
+    try:
+        intervals = calendar_busy.connection_intervals(db, conn, start, end)
+    except CalendarProviderError as exc:
+        return deps.render(request, "settings/_availability.html", {"connection": conn, "error": public_error_message(get_provider(conn.provider), exc)})
+    return deps.render(request, "settings/_availability.html", {"connection": conn, "intervals": intervals})
 
 
 @router.post("/calendar/connections/{conn_id}/disconnect", dependencies=[Depends(deps.csrf_protect)])

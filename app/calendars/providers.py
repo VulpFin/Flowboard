@@ -32,10 +32,25 @@ import httpx
 from ..config import settings
 
 
+# Keep the reviewed Google scopes in one place.  Public disclosures and tests
+# import these values rather than maintaining a second, drift-prone list.
+GOOGLE_CALENDAR_SCOPES = (
+    "https://www.googleapis.com/auth/calendar.events",
+    "https://www.googleapis.com/auth/calendar.readonly",
+)
+
+
 class CalendarProviderError(Exception):
     def __init__(self, message: str, *, reauth: bool = False):
         super().__init__(message)
         self.reauth = reauth
+
+
+def public_error_message(provider: "CalendarProvider", error: CalendarProviderError) -> str:
+    """A safe message for UI/state fields; provider response bodies stay out."""
+    if error.reauth:
+        return f"{provider.name} needs to be reconnected."
+    return f"Flowboard could not complete that {provider.name} request. Try again."
 
 
 def _rfc3339(dt: datetime) -> str:
@@ -85,6 +100,14 @@ class CalendarProvider:
         meetings from the daily capacity; providers that cannot answer return []."""
         return []
 
+    def revoke(self, token: Dict[str, Any]) -> None:
+        """Best-effort provider-side revocation before local credentials vanish.
+
+        A failed revoke must never prevent local token deletion or leave an
+        account apparently connected.
+        """
+        return None
+
     # token helpers
     @staticmethod
     def token_expired(token: Dict[str, Any]) -> bool:
@@ -106,7 +129,7 @@ class CalendarProvider:
 class GoogleCalendarProvider(CalendarProvider):
     id = "google"
     name = "Google Calendar"
-    scopes = "https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.readonly openid email"
+    scopes = " ".join(GOOGLE_CALENDAR_SCOPES)
     auth_url = "https://accounts.google.com/o/oauth2/v2/auth"
     token_url = "https://oauth2.googleapis.com/token"
     api = "https://www.googleapis.com/calendar/v3"
@@ -152,9 +175,13 @@ class GoogleCalendarProvider(CalendarProvider):
         return {"Authorization": f"Bearer {token.get('access_token', '')}"}
 
     def account_info(self, token: Dict[str, Any]) -> Dict[str, str]:
-        resp = self.http.get("https://openidconnect.googleapis.com/v1/userinfo", headers=self._h(token))
-        data = _check(resp, "Google userinfo")
-        return {"email": data.get("email", ""), "id": data.get("sub", "")}
+        # The Calendar API's primary calendar normally uses the account email
+        # as its id.  This avoids asking Google for separate OpenID/profile
+        # scopes solely to label a calendar connection.
+        calendars = self.list_calendars(token)
+        primary = next((cal for cal in calendars if cal.get("primary")), calendars[0] if calendars else {})
+        account_id = str(primary.get("id") or "")
+        return {"email": account_id if "@" in account_id else "", "id": account_id}
 
     def list_calendars(self, token: Dict[str, Any]) -> List[Dict[str, Any]]:
         resp = self.http.get(f"{self.api}/users/me/calendarList", headers=self._h(token), params={"minAccessRole": "writer"})
@@ -198,6 +225,18 @@ class GoogleCalendarProvider(CalendarProvider):
                 if s and e:
                     out.append((s, e))
         return out
+
+    def revoke(self, token: Dict[str, Any]) -> None:
+        # Google accepts either token type.  Prefer the refresh token so all
+        # offline access is invalidated too.  Local deletion still happens if
+        # the network or provider endpoint is unavailable.
+        value = token.get("refresh_token") or token.get("access_token")
+        if not value:
+            return
+        try:
+            self.http.post("https://oauth2.googleapis.com/revoke", data={"token": value}, timeout=5.0)
+        except httpx.HTTPError:
+            pass
 
 
 # --------------------------------------------------------------------------

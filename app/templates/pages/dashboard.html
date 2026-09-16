@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Home · {{ site_name }}{% endblock %}
+{% block content %}
+<section class="dashboard-head">
+  <div>
+    <p class="eyebrow">Your Flowboard</p>
+    <h1>Welcome back, {{ user.display_name or user.username }}</h1>
+    <p class="muted">Pick up the work that matters, then make room for the rest.</p>
+  </div>
+  <div class="row"><a class="btn primary" href="/boards/{{ ref_for(default_board, user) }}/">Open my board</a><a class="btn" href="/boards">All boards</a></div>
+</section>
+
+<section class="dashboard-grid">
+  <section class="panel">
+    <h2>Recent boards</h2>
+    <ul class="plain dashboard-list">
+      {% for board in recent_boards %}
+      <li><a href="/boards/{{ ref_for(board, user) }}/">{{ board.icon }} {{ board.name }}</a><span class="muted small">{{ counts[board.id].open }} open</span></li>
+      {% endfor %}
+    </ul>
+    <a href="/boards">Create or manage boards</a>
+  </section>
+  <section class="panel">
+    <h2>Calendars</h2>
+    {% if connections %}
+      <p>{{ connections|length }} connected account{{ '' if connections|length == 1 else 's' }}.</p>
+      <ul class="plain">{% for connection in connections %}<li>{{ connection.provider|capitalize }} · {{ connection.target_calendar_name or 'Choose a calendar' }}</li>{% endfor %}</ul>
+    {% else %}
+      <p class="muted">No calendar account is connected yet.</p>
+    {% endif %}
+    <a href="/settings/calendars">Calendar integrations</a>
+  </section>
+  <section class="panel">
+    <h2>Quick links</h2>
+    <ul class="plain"><li><a href="/settings/account">Account settings</a></li><li><a href="/settings/ai-providers">AI providers</a></li><li><a href="/settings/schedule">Schedule and capacity</a></li></ul>
+  </section>
+</section>
+{% endblock %}

@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Third-Party Services · {{ site_name }}{% endblock %}
+{% block content %}
+<article class="panel prose">
+  <h1>Third-Party Services</h1>
+  <p>Flowboard works without connecting an external account. The integrations below are optional and are activated only when a user chooses to connect or configure them.</p>
+
+  <h2>Google Calendar</h2>
+  <p>When a user connects Google Calendar, Flowboard requests the following Google Calendar API scopes:</p>
+  <ul>{% for scope in google_scopes %}<li><code>{{ scope }}</code></li>{% endfor %}</ul>
+  <p><code>calendar.readonly</code> lets Flowboard read the calendars available to the user and retrieve free/busy availability so its schedule can account for occupied time. <code>calendar.events</code> lets Flowboard create, update, and delete calendar events only when the user performs those actions from a dated Flowboard task.</p>
+  <p>Flowboard does not import Google Calendar events as Flowboard tasks and does not store event titles, attendees, or descriptions from Google. It caches the user-selected calendar list and busy time intervals for up to 15 minutes to plan around availability. Connected Google tokens are encrypted at rest. Disconnecting removes the local connection and tokens and makes a best-effort request to revoke the Google credential; existing Google Calendar events are not deleted by disconnecting.</p>
+  <p>The use of raw or derived user data received from Google Workspace APIs will adhere to the <a href="https://developers.google.com/terms/api-services-user-data-policy" rel="noopener">Google API Services User Data Policy</a>, including the Limited Use requirements.</p>
+  <p>Google Calendar event content is not sent to AI providers. When a user asks the Flowboard assistant to schedule work, the request can include a derived daily total of calendar-busy minutes; it never includes Google event titles, attendees, descriptions, or OAuth tokens. Flowboard does not use Google Workspace API data to train or improve generalized or foundation AI models. See the <a href="/privacy#google-calendar">Privacy Policy</a> for the canonical data-handling description.</p>
+
+  <h2>Microsoft 365 and Microsoft Graph</h2>
+  <p>Flowboard can optionally connect Microsoft 365 / Outlook through Microsoft Graph. The current delegated scopes are <code>Calendars.ReadWrite</code>, <code>User.Read</code>, and <code>offline_access</code>. They identify the connected account, list writable calendars, read availability, and create, update, or delete events selected by the user. Flowboard does not claim that an unconfigured provider is available on this deployment.</p>
+
+  <h2>AI providers and bring-your-own-key</h2>
+  <p>Flowboard lets a user configure their own supported AI provider credentials. Requests use the selected provider and can contain the Flowboard board/task content needed for that request. The provider's terms and privacy policy apply to data sent to it. Credentials are encrypted at rest and are never rendered to public pages or returned in full to users.</p>
+  {% if ai_providers %}<ul>{% for provider in ai_providers %}<li><b>{{ provider.name }}</b> <span class="tag">{{ provider.status }}</span></li>{% endfor %}</ul>{% endif %}
+  <p>Other calendar and productivity providers may be considered in the future, including CalDAV, Apple Calendar, Zoho, Proton, Notion, Nylas, Cronofy, and Cal.com. They are not represented as active integrations unless Flowboard implements and configures them.</p>
+
+  <h2>More information</h2>
+  <p>Read the <a href="/privacy">Privacy Policy</a>, <a href="/terms">Terms of Service</a>, or <a href="/support">contact support</a>.</p>
+</article>
+{% endblock %}

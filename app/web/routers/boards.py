@@ -24,17 +24,6 @@ from .. import deps
 router = APIRouter(tags=["boards"])
 
 
-@router.get("/")
-def home(user: User = Depends(deps.get_current_user), db: Session = Depends(get_db)):
-    board = auth_service.ensure_default_board(db, user)
-    if user.profile is not None and not user.profile.tutorial_seeded:  # accounts created before 2.1
-        try:
-            tutorial_service.seed_tutorial(db, user)
-        except Exception:
-            pass
-    return deps.redirect(f"/boards/{board_service.ref_for(board, user)}/")
-
-
 @router.get("/boards")
 def board_list(request: Request, user: User = Depends(deps.get_current_user), db: Session = Depends(get_db)):
     boards = board_service.list_boards_for_user(db, user, include_archived=True)
@@ -72,6 +61,7 @@ def board_view(request: Request, board: Board = Depends(deps.current_board), use
         "columns": columns, "stats": task_service.board_stats(all_tasks), "ai_model": model.ref if model else None,
         "quick_prompts": QUICK_PROMPTS, "can_edit": membership.role_enum.can_edit if membership else False,
         "cal_links": cal_links.links_for_board(db, board), "connections": cal_links.list_connections(db, user),
+        "has_google_calendar": any(conn.provider == "google" for conn in cal_links.list_connections(db, user)),
         "board_settings": board_service.board_settings(board),
         "members": members, "member_names": {m["id"]: m["name"] for m in members},
     }, db=db)

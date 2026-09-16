@@ -19,8 +19,10 @@
     </form>
     <div class="row">
       <form method="post" action="/calendar/connections/{{ c.id }}/refresh"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button>Refresh calendars</button></form>
+      <button type="button" hx-get="/calendar/connections/{{ c.id }}/availability" hx-target="#availability-{{ c.id }}" hx-swap="innerHTML">Show availability</button>
       <form method="post" action="/calendar/connections/{{ c.id }}/disconnect" onsubmit="return confirm('Disconnect {{ c.provider }}? Existing events stay in your calendar.')"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="danger">Disconnect</button></form>
     </div>
+    <div id="availability-{{ c.id }}"></div>
   </div>
   {% else %}<p class="muted">No calendar accounts connected.</p>{% endfor %}
   <h4>Connect</h4>
@@ -29,7 +31,7 @@
     {% if p.configured %}<a class="btn primary" href="/calendar/connect/{{ p.id }}">Connect {{ p.name }}</a>{% else %}<span class="btn disabled" title="Set the OAuth client id/secret in the server .env to enable">{{ p.name }} (not configured on server)</span>{% endif %}
   {% endfor %}
   </div>
-  <p class="muted small">Flowboard asks only for calendar event access (plus your email to label the account). Tokens are encrypted at rest. Sync is one-way: Flowboard → calendar; events you add with “+ Calendar” are updated when the task changes and removed if you delete the task.</p>
+  <p class="muted small">Flowboard asks only for the calendar access each provider needs. Tokens are encrypted at rest. Sync is one-way: Flowboard → calendar; events you add with “+ Calendar” are updated when the task changes and removed if you delete the task. <a href="/third-party-services">Read provider details</a>.</p>
 </section>
 <section class="panel">
   <h3>Subscription feeds (Apple Calendar, Outlook, Thunderbird, Google “from URL”)</h3>

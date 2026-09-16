@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}OAuth Review Guide · {{ site_name }}{% endblock %}
+{% block content %}
+<article class="panel prose">
+  <h1>Google Calendar OAuth Review Guide</h1>
+  <p>This guide is for a normal Flowboard reviewer account supplied separately by the Flowboard administrator. Reviewer credentials are never published here.</p>
+  <ol>
+    <li>Visit <a href="/login">Flowboard sign in</a> and sign in with the supplied local Flowboard account.</li>
+    <li>Open <a href="/settings/calendars">Settings → Calendars &amp; integrations</a>.</li>
+    <li>Select <b>Connect Google Calendar</b>, review the Flowboard explanation, and choose <b>Continue to Google</b>.</li>
+    <li>Complete Google's consent flow and return to Flowboard.</li>
+    <li>Use <b>Refresh calendars</b> to show the calendars Flowboard can use, then use <b>Show availability</b> to display busy time Flowboard reads for scheduling.</li>
+    <li>Open a board, add a dated task, choose the Google connection, and select <b>+ Calendar</b>. Verify the event in Google Calendar.</li>
+    <li>Edit the dated task and verify its Google Calendar event updates. Removing the task's due date removes the linked event; disconnecting the account does not delete pre-existing Google events.</li>
+  </ol>
+  <p>Flowboard requests <code>calendar.readonly</code> and <code>calendar.events</code>. See <a href="/third-party-services">Third-Party Services</a> and the <a href="/privacy">Privacy Policy</a> for scope and data-use details.</p>
+</article>
+{% endblock %}

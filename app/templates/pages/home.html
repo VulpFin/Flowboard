@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Flowboard · Planning that respects your time{% endblock %}
+{% block content %}
+<section class="home-hero">
+  <p class="eyebrow">VulpFin productivity</p>
+  <h1>Flowboard</h1>
+  <p class="lead">A planning workspace for boards, tasks, schedules, calendars, and the services you choose to connect.</p>
+  <div class="row home-actions">
+    <a class="btn primary" href="/register">Create account</a>
+    <a class="btn" href="/login">Sign in</a>
+  </div>
+</section>
+
+<section class="home-band">
+  <div>
+    <h2>Plan work that fits a real day</h2>
+    <p>Organize work into boards, estimate effort, account for dependencies and energy, then build a schedule around the time you actually have.</p>
+  </div>
+  <div>
+    <h2>Built for personal and shared work</h2>
+    <p>Use a private board for life admin, share one with a project team, or keep separate spaces for work, home, school, and the projects in between.</p>
+  </div>
+  <div>
+    <h2>Calendars alongside planning</h2>
+    <p>You may connect a calendar provider so Flowboard can show available calendars and busy availability alongside your planning data. When you choose to add a dated task to a connected calendar, Flowboard can create and update that event there.</p>
+  </div>
+</section>
+
+<section class="home-band home-split">
+  <div>
+    <p class="eyebrow">Integrations on your terms</p>
+    <h2>Connect only what helps</h2>
+    <p>Google Calendar and Microsoft 365 integrations are optional. Calendar access helps Flowboard avoid scheduling work over meetings and lets you place a Flowboard task on a calendar you select.</p>
+    <a href="/third-party-services">Read about third-party services</a>
+  </div>
+  <div>
+    <p class="eyebrow">AI with your credentials</p>
+    <h2>You choose the provider</h2>
+    <p>Flowboard's assistant uses an AI provider credential you configure. It proposes changes for review; it does not apply them on its own. Provider data handling terms apply to requests sent to that provider.</p>
+    <a href="/privacy">Read the privacy policy</a>
+  </div>
+</section>
+
+<section class="home-band home-privacy">
+  <div>
+    <h2>Privacy and control</h2>
+    <p>Connections are optional, credentials are encrypted at rest, and you can disconnect a provider whenever you choose. Flowboard does not sell personal data or use it for advertising.</p>
+  </div>
+  <div class="row home-actions">
+    <a class="btn primary" href="/register">Get started</a>
+    <a class="btn" href="/third-party-services">Integration details</a>
+  </div>
+</section>
+{% endblock %}

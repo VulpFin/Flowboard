@@ -32,6 +32,13 @@
           <form method="post" action="/logout" style="display:inline"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="linkbtn" type="submit" title="Sign out {{ user.username }}">Sign out</button></form>
         </nav>
       </div>
+    {% else %}
+      <nav class="publicnav" aria-label="Primary navigation">
+        <a href="/third-party-services">Integrations</a>
+        <a href="/privacy">Privacy</a>
+        <a class="linkbtn" href="/login">Sign in</a>
+        <a class="linkbtn public-cta" href="/register">Create account</a>
+      </nav>
     {% endif %}
   </header>
   <main class="wrap">
@@ -47,9 +54,10 @@
       <a href="/guidelines">Guidelines</a> ·
       <a href="/terms">Terms</a> ·
       <a href="/privacy">Privacy</a> ·
+      <a href="/third-party-services">Third-Party Services</a> ·
       <a href="/status">Status</a> ·
       <a href="/changelog">Changelog</a> ·
-      <a class="supportlink" href="/support?from_page={{ request.url.path | urlencode }}">Support</a>
+      <a class="supportlink" href="/support?from_page={{ request.url.path | urlencode }}">Contact / Support</a>
     </nav>
     <div>Flowboard {{ app_version }} · Copyleft 2026 TG11 LLC ·
       <a href="https://github.com/tg11-org" rel="noopener">TG11</a> · AGPL-3.0</div>

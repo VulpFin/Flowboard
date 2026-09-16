@@ -30,8 +30,11 @@ Setup (operator, once):
    `https://flowboard.fyi/calendar/connect/google/callback`.
 4. Put `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` in `.env`, restart.
 
-Scopes requested: `calendar.events`, `calendar.readonly` (to list calendars),
-`openid email` (to label the account). No password is ever asked for.
+Scopes requested: `https://www.googleapis.com/auth/calendar.events` and
+`https://www.googleapis.com/auth/calendar.readonly`. They are defined once in
+`app.calendars.providers.GOOGLE_CALENDAR_SCOPES`; no Google OpenID/profile
+scope is requested. The account label is derived from the Calendar API's
+primary calendar where available. No password is ever asked for.
 
 ## 3. Microsoft 365 / Outlook (Microsoft Graph)
 
