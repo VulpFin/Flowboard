@@ -30,7 +30,14 @@ sudo -u flowboard "$APP/.venv/bin/python" -m app.cli check
 if [ "${1:-}" != "--no-restart" ]; then
   systemctl daemon-reload
   systemctl restart flowboard
-  sleep 2
   systemctl --no-pager --lines=5 status flowboard || true
-  curl -fsS http://127.0.1.1:8000/healthz && echo
+  for _attempt in $(seq 1 10); do
+    if curl -fsS http://127.0.1.1:8000/healthz; then
+      echo
+      exit 0
+    fi
+    sleep 1
+  done
+  echo "Flowboard did not become ready within 10 seconds." >&2
+  exit 1
 fi
