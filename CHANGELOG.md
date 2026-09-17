@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.5.1 — 2026-09-16
+
+* **A public front door.** The root route now explains what Flowboard is to signed-out visitors instead of redirecting them to a board. Signed-in members see a practical home with their recent boards, calendar connections, and quick links.
+* **OAuth verification information.** Privacy, Terms, Third-Party Services, and an OAuth reviewer guide are reachable without an account. The Google Calendar connection flow explains its purpose before sending anyone to Google.
+* **Narrower Google access.** Google Calendar now requests only `calendar.readonly` and `calendar.events`. Flowboard uses calendar lists and free/busy intervals to plan around occupied time, and creates/updates/deletes events only when a user acts on a Flowboard task.
+* **Clearer data handling.** The public policy now documents encrypted calendar credentials, 15-minute availability caching, disconnect behavior, Google Limited Use, and the fact that calendar event content is not sent to AI providers. An assistant scheduling request can include only derived daily busy-minute totals.
+* **Disconnect and deployment reliability.** Disconnecting Google makes a best-effort token revocation request before removing local credentials. The deploy script waits for the app to become ready instead of treating worker startup as a failed health check.
+
 ## 2.5.0 — 2026-09-14
 
 * **The pages a service owes its users.** `/about`, `/terms`, `/privacy`, `/guidelines`, `/faq`, `/status` and `/changelog` join the existing `/support`, all linked from the footer of every page. They render without touching the database (except the one live check on `/status`), so they answer even when the rest of the application is having a bad day.
