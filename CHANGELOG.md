@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.6.5 — 2026-09-27
+
+* **Shareable public sections.** Every heading on Flowboard's prose pages now receives a stable URL fragment and works as a link. Hover or focus a heading to reveal its link marker; opening or sharing that URL scrolls directly to the section.
+
 ## 2.6.4 — 2026-09-27
 
 * **Explicit Google data disclosure.** The privacy policy now separately identifies Google Calendar data accessed, the requested calendar features it provides, the limited user-directed derived busy-time disclosure to a selected AI provider, storage and deletion, and the prohibition on selling Google data or training generalized AI models.

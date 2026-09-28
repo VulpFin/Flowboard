@@ -227,6 +227,11 @@ button.mini, input.mini, select.mini { font-size: .78rem; padding: .15rem .45rem
 .prose h1{margin:.2rem 0 .6rem}
 .prose h2{margin:1.5rem 0 .4rem;font-size:1.05rem;color:#cfe7ff}
 .prose h3{margin:1.2rem 0 .3rem;font-size:1rem;color:#cfe7ff}
+.prose h2,.prose h3{scroll-margin-top:5rem}
+.prose .heading-anchor{color:inherit;text-decoration:none}
+.prose .heading-anchor::after{content:'#';margin-left:.35rem;color:var(--accent);font-size:.8em;opacity:0;transition:opacity .15s ease}
+.prose h2:hover .heading-anchor::after,.prose h3:hover .heading-anchor::after,.prose .heading-anchor:focus-visible::after{opacity:1}
+.prose :target{background:color-mix(in srgb,var(--accent) 12%,transparent)}
 .prose p{margin:.5rem 0}
 .prose ul{padding-left:1.2rem;margin:.4rem 0}
 .prose li{margin:.28rem 0}

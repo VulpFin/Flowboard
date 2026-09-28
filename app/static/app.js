@@ -292,6 +292,39 @@
     }
   }
 
+  // Public policy and help pages are easier to reference when every section
+  // heading has a stable fragment URL. Existing explicit IDs are preserved.
+  function initHeadingLinks() {
+    const headings = Array.from(document.querySelectorAll('.prose h2, .prose h3'));
+    if (!headings.length) return;
+    const used = new Set(Array.from(document.querySelectorAll('[id]')).map(function (el) { return el.id; }));
+    headings.forEach(function (heading) {
+      if (heading.dataset.headingLink) return;
+      let id = heading.id;
+      if (!id) {
+        const base = (heading.textContent || '').toLowerCase().trim()
+          .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'section';
+        id = base;
+        let suffix = 2;
+        while (used.has(id)) id = base + '-' + suffix++;
+        heading.id = id;
+      }
+      used.add(id);
+      const anchor = document.createElement('a');
+      anchor.className = 'heading-anchor';
+      anchor.href = '#' + encodeURIComponent(id);
+      anchor.title = 'Link to this section';
+      anchor.setAttribute('aria-label', 'Link to ' + heading.textContent.trim());
+      while (heading.firstChild) anchor.appendChild(heading.firstChild);
+      heading.appendChild(anchor);
+      heading.dataset.headingLink = 'true';
+    });
+    if (window.location.hash) {
+      const target = document.getElementById(decodeURIComponent(window.location.hash.slice(1)));
+      if (target) target.scrollIntoView();
+    }
+  }
+
   function init() {
     initSortable();
     initCollapse();
@@ -299,6 +332,7 @@
     initAssistant();
     initFlashes();
     initMobile();
+    initHeadingLinks();
   }
   document.addEventListener('DOMContentLoaded', init);
   document.body.addEventListener('htmx:afterSwap', function (e) {

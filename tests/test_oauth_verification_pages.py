@@ -99,3 +99,14 @@ def test_robots_sitemap_and_public_metadata(client):
     assert f"<loc>{settings.absolute_url('/privacy')}</loc>" in sitemap.text
     assert '<meta name="robots" content="index,follow"' in home.text
     assert f'<link rel="canonical" href="{settings.absolute_url("/")}"' in home.text
+
+
+def test_public_section_headings_are_given_shareable_fragment_links(client):
+    script = client.get("/static/app.js")
+    stylesheet = client.get("/static/styles.css")
+
+    assert script.status_code == 200
+    assert "function initHeadingLinks()" in script.text
+    assert "heading-anchor" in script.text
+    assert stylesheet.status_code == 200
+    assert ".prose .heading-anchor" in stylesheet.text
