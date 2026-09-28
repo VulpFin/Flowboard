@@ -33,6 +33,7 @@ CATEGORIES = [
     ("question", "I need help using it"),
     ("feature", "Idea or request"),
     ("account", "Account or sign-in problem"),
+    ("data_recovery", "Restore deleted data"),
     ("other", "Something else"),
 ]
 CATEGORY_IDS = {c for c, _label in CATEGORIES}

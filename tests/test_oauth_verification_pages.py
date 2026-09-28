@@ -72,3 +72,30 @@ def test_public_integration_page_never_includes_tokens_or_provider_secrets(clien
     assert "GOOGLE_CLIENT_SECRET" not in response.text
     assert "access_token" not in response.text
     assert "refresh_token" not in response.text
+
+
+def test_privacy_policy_explicitly_discloses_google_data_use_and_sharing(client):
+    response = client.get("/privacy")
+
+    assert response.status_code == 200
+    assert "Google user data we access" in response.text
+    assert "How Flowboard uses Google user data" in response.text
+    assert "Sharing, transfer, and disclosure of Google user data" in response.text
+    assert "does not sell, rent, or share raw Google Calendar data" in response.text
+    assert "Storage, retention, and deletion" in response.text
+
+
+def test_robots_sitemap_and_public_metadata(client):
+    robots = client.get("/robots.txt")
+    sitemap = client.get("/sitemap.xml")
+    home = client.get("/")
+
+    assert robots.status_code == 200
+    assert robots.headers["content-type"].startswith("text/plain")
+    assert f"Sitemap: {settings.absolute_url('/sitemap.xml')}" in robots.text
+    assert sitemap.status_code == 200
+    assert sitemap.headers["content-type"].startswith("application/xml")
+    assert f"<loc>{settings.absolute_url('/')}</loc>" in sitemap.text
+    assert f"<loc>{settings.absolute_url('/privacy')}</loc>" in sitemap.text
+    assert '<meta name="robots" content="index,follow"' in home.text
+    assert f'<link rel="canonical" href="{settings.absolute_url("/")}"' in home.text

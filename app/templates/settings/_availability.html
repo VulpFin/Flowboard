@@ -1,4 +1,4 @@
 {% if error %}<p class="flash bad">{{ error }}</p>{% elif intervals %}
-<p class="muted small">Busy availability for the next seven days. Event titles and details are not shown or retained.</p>
-<ul class="plain availability-list">{% for start, end in intervals %}<li>{{ start.strftime('%a %b %d, %H:%M UTC') }} – {{ end.strftime('%H:%M UTC') }}</li>{% endfor %}</ul>
-{% else %}<p class="muted small">No busy availability was returned for the next seven days.</p>{% endif %}
+<p class="muted small">Busy availability from {{ connection.target_calendar_name or 'your selected calendar' }} for the next seven days, shown in {{ timezone_name }}. Event titles and details are not shown or retained.</p>
+<ul class="plain availability-list">{% for start, end in intervals %}<li>{{ start.strftime('%a %b %d, %H:%M') }} – {{ end.strftime('%H:%M') }}</li>{% endfor %}</ul>
+{% else %}<p class="muted small">No busy availability was returned from {{ connection.target_calendar_name or 'your selected calendar' }} for the next seven days.</p>{% endif %}

@@ -37,6 +37,9 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     email_verified_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     state: Mapped[str] = mapped_column(String(32), default="active", nullable=False)  # active|pending_verification|limited|suspended
     last_login_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    # Deleted accounts are retained temporarily for operator-approved recovery.
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    deleted_by_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
     # Stable TG11 identity UUID once linked (denormalised from IdentityLink for fast lookup)
     tg11_user_id: Mapped[Optional[str]] = mapped_column(String(36), unique=True, nullable=True)
 
@@ -132,3 +135,6 @@ class UserSession(UUIDPrimaryKeyMixin, Base):
     ip_address: Mapped[str] = mapped_column(String(64), default="", nullable=False)
     csrf_token: Mapped[str] = mapped_column(String(64), nullable=False)
     auth_method: Mapped[str] = mapped_column(String(32), default="password", nullable=False)  # password|tg11
+    # A short-lived TG11 step-up approval, bound to one destructive operation.
+    reauthenticated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    reauth_target_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)

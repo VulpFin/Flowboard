@@ -32,11 +32,11 @@ def _aad(user_id: str, provider: str) -> str:
 
 
 def list_credentials(db: Session, user: User) -> List[AIProviderCredential]:
-    return list(db.scalars(select(AIProviderCredential).where(AIProviderCredential.user_id == user.id).order_by(AIProviderCredential.provider)))
+    return list(db.scalars(select(AIProviderCredential).where(AIProviderCredential.user_id == user.id, AIProviderCredential.deleted_at.is_(None)).order_by(AIProviderCredential.provider)))
 
 
 def get_credential(db: Session, user: User, provider: str) -> Optional[AIProviderCredential]:
-    return db.scalar(select(AIProviderCredential).where(AIProviderCredential.user_id == user.id, AIProviderCredential.provider == provider))
+    return db.scalar(select(AIProviderCredential).where(AIProviderCredential.user_id == user.id, AIProviderCredential.provider == provider, AIProviderCredential.deleted_at.is_(None)))
 
 
 def get_credential_by_id(db: Session, user: User, cred_id: str) -> Optional[AIProviderCredential]:
@@ -95,6 +95,8 @@ def upsert_credential(
     blob, version = cipher.encrypt_json(merged, _aad(user.id, provider))
     primary = merged.get("api_key", "") or next(iter(merged.values()), "")
     if cred is None:
+        cred = db.scalar(select(AIProviderCredential).where(AIProviderCredential.user_id == user.id, AIProviderCredential.provider == provider))
+    if cred is None:
         cred = AIProviderCredential(user_id=user.id, provider=provider, secret_blob=blob, key_version=version)
         db.add(cred)
     else:
@@ -106,13 +108,17 @@ def upsert_credential(
     cred.validation_status = "unknown"
     cred.validation_message = ""
     cred.enabled = True
+    cred.deleted_at = None
+    cred.deleted_by_id = None
     db.flush()
     return cred
 
 
 def delete_credential(db: Session, user: User, cred: AIProviderCredential) -> None:
     assert cred.user_id == user.id
-    db.delete(cred)
+    cred.enabled = False
+    cred.deleted_at = utcnow()
+    cred.deleted_by_id = user.id
     db.flush()
 
 

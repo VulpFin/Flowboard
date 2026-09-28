@@ -10,15 +10,18 @@ from urllib.parse import quote
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import JSONResponse, PlainTextResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from . import __version__
 from .config import settings
+from .db import SessionLocal
+from .services import ip_blocks
 from .web import deps
 from .web.routers import ai as ai_router
+from .web.routers import admin as admin_router
 from .web.routers import auth as auth_router
 from .web.routers import boards as boards_router
 from .web.routers import calendars as calendars_router
@@ -65,6 +68,20 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         return response
 
 
+class ClientIPBlockMiddleware(BaseHTTPMiddleware):
+    """Reject an active blocked source address before it reaches any route."""
+
+    async def dispatch(self, request: Request, call_next):
+        address = request.client.host if request.client else ""
+        db = SessionLocal()
+        try:
+            if ip_blocks.matching_block(db, address) is not None:
+                return PlainTextResponse("Access denied.", status_code=403)
+        finally:
+            db.close()
+        return await call_next(request)
+
+
 @asynccontextmanager
 async def _lifespan(app: FastAPI):
     # Make sure the schema exists in dev/test (alembic is the source of truth in prod).
@@ -80,6 +97,9 @@ async def _lifespan(app: FastAPI):
 def create_app() -> FastAPI:
     app = FastAPI(title=settings.FLOWBOARD_SITE_NAME, version=__version__, lifespan=_lifespan, docs_url="/api/docs" if settings.is_dev else None, redoc_url=None, openapi_url="/api/openapi.json" if settings.is_dev else None)
 
+    # Added first so ProxyHeadersMiddleware (when configured) resolves the
+    # original client before this runs. The service itself is loopback-only.
+    app.add_middleware(ClientIPBlockMiddleware)
     if settings.FLOWBOARD_PROXY_HEADERS:
         from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
@@ -97,6 +117,7 @@ def create_app() -> FastAPI:
     app.include_router(boards_router.router)
     app.include_router(tasks_router.router)
     app.include_router(ai_router.router)
+    app.include_router(admin_router.router)
     app.include_router(settings_router.router)
     app.include_router(calendars_router.router)
     app.include_router(support_router.router)

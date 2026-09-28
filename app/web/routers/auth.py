@@ -15,7 +15,7 @@ from ...config import settings
 from ...db import get_db
 from ...identity import tg11_api
 from ...identity.oidc import PROVIDER_ID, OIDCClient, OIDCError
-from ...models import User
+from ...models import User, UserSession
 from ...services import auth as auth_service
 from .. import deps
 
@@ -35,6 +35,18 @@ def _login_user(request: Request, db: Session, user: User, next_url: str, auth_m
     resp = deps.redirect(_safe_next(next_url))
     deps.set_session_cookie(resp, sess.id)
     resp.delete_cookie(deps.CSRF_COOKIE, path="/")
+    return resp
+
+
+def begin_tg11_reauth(*, target_id: str, next_url: str) -> RedirectResponse:
+    """Start a prompt=login TG11 flow for a staff-only destructive action."""
+    client = OIDCClient.from_settings()
+    flow = client.new_flow_state()
+    flow["next"] = _safe_next(next_url)
+    flow["reauth_action"] = "permanent_account_delete"
+    flow["reauth_target"] = target_id
+    resp = deps.redirect(client.authorization_url(flow, prompt="login"))
+    resp.set_cookie(FLOW_COOKIE, _flow_signer.dumps(flow), max_age=600, httponly=True, secure=not settings.is_dev, samesite="lax", path="/auth/tg11")
     return resp
 
 
@@ -160,6 +172,25 @@ def tg11_callback(request: Request, code: Optional[str] = None, state: Optional[
         claims = OIDCClient.from_settings().exchange(code, flow)
     except OIDCError as exc:
         return deps.redirect(f"/login?err=TG11+sign-in+failed:+{exc}")
+    if flow.get("reauth_action") == "permanent_account_delete":
+        target_id = str(flow.get("reauth_target") or "")
+        target = db.get(User, target_id)
+        if current is None or not current.is_staff or not current.tg11_user_id or current.tg11_user_id != claims.subject:
+            return deps.redirect("/admin?err=TG11+reauthentication+did+not+match+the+current+staff+account")
+        if target is None or target.deleted_at is None or target.id == current.id:
+            return deps.redirect("/admin?err=That+account+is+not+available+for+permanent+deletion")
+        sid = deps.read_session_id(request)
+        session = db.get(UserSession, sid) if sid else None
+        if session is None or session.user_id != current.id:
+            return deps.redirect(f"/admin/users/{target.id}?err=Your+Flowboard+session+expired")
+        from ...models import utcnow as _now
+
+        session.reauthenticated_at = _now()
+        session.reauth_target_id = target.id
+        resp = deps.redirect(f"/admin/users/{target.id}?msg=TG11+reauthentication+confirmed.+You+can+now+permanently+delete+this+account")
+        resp.delete_cookie(FLOW_COOKIE, path="/auth/tg11")
+        return resp
+
     def _import_keys(u: User) -> str:
         if "tg11.ai" not in (claims.scope or "").split() or not claims.access_token:
             return ""
@@ -204,6 +235,8 @@ def tg11_callback(request: Request, code: Optional[str] = None, state: Optional[
             resp.delete_cookie(FLOW_COOKIE, path="/auth/tg11")
             return resp
         user, _created = auth_service.get_or_create_user_for_identity(db, provider=PROVIDER_ID, issuer=settings.TG11_OIDC_ISSUER, subject=claims.subject, email=claims.email, email_verified=claims.email_verified, preferred_username=claims.preferred_username, display_name=claims.name)
+        if not user.is_active:
+            return deps.redirect("/login?err=This+account+is+not+available")
         if _created:
             tg11_api.register_link(claims.subject, user.id)
         _import_keys(user)

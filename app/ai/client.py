@@ -41,6 +41,8 @@ from .types import (
     ToolSpec,
 )
 
+NON_CHAT_TAGS = frozenset({"embedding", "audio", "image", "video", "computer", "speech", "transcription"})
+
 
 class ResolvedModel:
     def __init__(self, provider: str, model: str, source: str):
@@ -49,6 +51,29 @@ class ResolvedModel:
     @property
     def ref(self) -> str:
         return f"{self.provider}:{self.model}"
+
+
+def is_text_chat_model(model: ModelInfo) -> bool:
+    """Whether Flowboard's planning/chat pipeline can safely send this model text."""
+    return not (set(model.tags or []) & NON_CHAT_TAGS)
+
+
+def is_model_ref_eligible(db: Session, user: User, ref: str) -> bool:
+    """Validate a saved or requested reference against configured model metadata."""
+    try:
+        provider, model_id = parse_model_ref(ref)
+    except ValueError:
+        return False
+    credential = cred_service.get_credential(db, user, provider)
+    if credential is None or not credential.enabled:
+        return False
+    cached = cred_service.cached_models(credential)
+    for model in cached:
+        if model.id == model_id:
+            return is_text_chat_model(model)
+    if cached:
+        return False
+    return is_text_chat_model(ModelInfo(id=model_id))
 
 
 def resolve_model(db: Session, user: User, board: Optional[Board] = None, explicit: Optional[str] = None) -> Optional[ResolvedModel]:
@@ -71,11 +96,14 @@ def resolve_model(db: Session, user: User, board: Optional[Board] = None, explic
             provider, model = parse_model_ref(ref)
         except ValueError:
             continue
-        if provider in enabled:
+        if provider in enabled and is_model_ref_eligible(db, user, ref):
             return ResolvedModel(provider, model, source)
     for provider, cred in enabled.items():
-        if cred.default_model:
+        if cred.default_model and is_model_ref_eligible(db, user, f"{provider}:{cred.default_model}"):
             return ResolvedModel(provider, cred.default_model, "provider_default")
+        for model in cred_service.cached_models(cred):
+            if is_text_chat_model(model):
+                return ResolvedModel(provider, model.id, "provider_catalog")
     return None
 
 
@@ -89,7 +117,7 @@ def available_models(db: Session, user: User) -> List[Dict[str, Any]]:
         models = cred_service.models_for_credential(db, cred)
         groups: Dict[str, List[Dict[str, Any]]] = {}
         for m in models:
-            if "embedding" in m.tags or "audio" in m.tags:
+            if not is_text_chat_model(m):
                 continue
             groups.setdefault(m.family or spec.family_for(m.id), []).append({**m.to_dict(), "ref": f"{cred.provider}:{m.id}"})
         out.append({

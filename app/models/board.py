@@ -47,6 +47,9 @@ class Board(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     color: Mapped[str] = mapped_column(String(16), default="", nullable=False)  # hex colour
     theme_json: Mapped[str] = mapped_column(Text, default="{}", nullable=False)
     is_archived: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # A recoverable deletion keeps the board and its work out of normal views.
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    deleted_by_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
     # Board-level settings (JSON): ai_model override, default context, etc.
     settings_json: Mapped[str] = mapped_column(Text, default="{}", nullable=False)
     position: Mapped[int] = mapped_column(default=0, nullable=False)

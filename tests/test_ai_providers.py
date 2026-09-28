@@ -10,7 +10,7 @@ from app.ai.base import ProviderAdapter
 from app.ai.client import AIClient, resolve_model, available_models
 from app.ai.providers.openai_compat import OpenAICompatAdapter
 from app.ai.registry import PROVIDERS, build_adapter, estimate_cost, get_spec, parse_model_ref
-from app.ai.types import AuthenticationError, ChatMessage, ChatRequest, InsufficientCreditsError, RateLimitedError, StructuredOutputError, NoProviderConfiguredError
+from app.ai.types import AuthenticationError, ChatMessage, ChatRequest, InsufficientCreditsError, ModelInfo, RateLimitedError, StructuredOutputError, NoProviderConfiguredError
 from app.models import AIProviderCredential
 from app.services import boards as board_service
 
@@ -167,3 +167,20 @@ def test_resolve_model_inheritance(db, alice):
     assert resolve_model(db, alice, board, explicit="openai:gpt-5").provider == "anthropic"
     groups = available_models(db, alice)
     assert [g["provider"] for g in groups] == ["anthropic"]
+
+
+def test_non_chat_models_are_hidden_and_cannot_win_default_resolution(db, alice):
+    credential = cred_service.upsert_credential(db, alice, "gemini", secrets={"api_key": "gemini-key"}, config={})
+    computer = ModelInfo(id="gemini-2.5-computer-use-preview", tags=["computer"])
+    text = ModelInfo(id="gemini-2.5-flash", tags=["fast"])
+    credential.models_cache_json = json.dumps([computer.to_dict(), text.to_dict()])
+    credential.default_model = computer.id
+    alice.profile.default_ai_model = f"gemini:{computer.id}"
+    db.flush()
+
+    resolved = resolve_model(db, alice, explicit=f"gemini:{computer.id}")
+    assert resolved.ref == "gemini:gemini-2.5-flash"
+    listed = available_models(db, alice)
+    ids = [m["id"] for group in listed for family in group["groups"] for m in family["models"]]
+    assert text.id in ids
+    assert computer.id not in ids

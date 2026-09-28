@@ -59,6 +59,7 @@ def board_view(request: Request, board: Board = Depends(deps.current_board), use
     members = board_service.member_list(db, board)
     return deps.render(request, "boards/view.html", {
         "columns": columns, "stats": task_service.board_stats(all_tasks), "ai_model": model.ref if model else None,
+        "ai_model_source": model.source if model else "",
         "quick_prompts": QUICK_PROMPTS, "can_edit": membership.role_enum.can_edit if membership else False,
         "cal_links": cal_links.links_for_board(db, board), "connections": cal_links.list_connections(db, user),
         "has_google_calendar": any(conn.provider == "google" for conn in cal_links.list_connections(db, user)),
@@ -83,6 +84,10 @@ def board_settings_page(request: Request, board: Board = Depends(deps.current_bo
 
 @router.post("/boards/{slug}/settings", dependencies=[Depends(deps.csrf_protect)])
 def board_settings_save(request: Request, name: str = Form(...), description: str = Form(""), icon: str = Form(""), color: str = Form(""), ai_model: str = Form(""), default_context: str = Form(""), regenerate_slug: Optional[str] = Form(None), board: Board = Depends(deps.current_board_admin), user: User = Depends(deps.get_current_user), db: Session = Depends(get_db)):
+    from ...ai.client import is_model_ref_eligible
+
+    if ai_model.strip() and not is_model_ref_eligible(db, user, ai_model.strip()):
+        return deps.redirect(f"/boards/{board_service.ref_for(board, user)}/settings?err=Choose+a+text+chat+model+or+use+the+account+default")
     st = board_service.board_settings(board)
     st["ai_model"] = ai_model.strip()
     st["default_context"] = default_context.strip()[:32]
@@ -105,11 +110,11 @@ def board_delete(confirm: str = Form(""), board: Board = Depends(deps.current_bo
         return deps.redirect(f"/boards/{board_service.ref_for(board, user)}/settings?err=Type+the+board+slug+to+confirm+deletion")
     if board.owner_id != user.id:
         return deps.redirect(f"/boards/{board_service.ref_for(board, user)}/settings?err=Only+the+owner+can+delete+a+board")
-    board_service.delete_board(db, board)
+    board_service.delete_board(db, board, deleted_by_id=user.id)
     if user.profile and user.profile.default_board_id == board.id:
         user.profile.default_board_id = None
     auth_service.ensure_default_board(db, user)
-    return deps.redirect("/boards?msg=Board+deleted")
+    return deps.redirect("/boards?msg=Board+moved+to+recoverable+deletion")
 
 
 @router.post("/boards/{slug}/make-default", dependencies=[Depends(deps.csrf_protect)])

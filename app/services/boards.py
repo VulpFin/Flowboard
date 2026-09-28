@@ -15,7 +15,7 @@ from typing import Dict, List, Optional
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..models import Board, BoardMembership, BoardRole, User
+from ..models import Board, BoardMembership, BoardRole, User, utcnow
 
 RESERVED_SLUGS = {"new", "settings", "archive", "api", "static", "login", "logout", "boards"}
 #: separates the owner from the slug in a *qualified* board reference,
@@ -86,7 +86,7 @@ def list_boards_for_user(db: Session, user: User, include_archived: bool = False
     q = (
         select(Board)
         .join(BoardMembership, BoardMembership.board_id == Board.id)
-        .where(BoardMembership.user_id == user.id, BoardMembership.accepted.is_(True))
+        .where(BoardMembership.user_id == user.id, BoardMembership.accepted.is_(True), Board.deleted_at.is_(None))
         .order_by(Board.is_archived, Board.position, Board.created_at)
     )
     boards = list(db.scalars(q).unique())
@@ -144,22 +144,22 @@ def get_board_for_user(db: Session, user: User, slug_or_id: str, *, require: Boa
         # board of your own that happens to share the slug
         owner = db.scalar(select(User).where(User.username == owner_name))
         if owner is not None:
-            board = db.scalar(select(Board).where(Board.owner_id == owner.id, Board.slug == slug))
+            board = db.scalar(select(Board).where(Board.owner_id == owner.id, Board.slug == slug, Board.deleted_at.is_(None)))
         if board is None:
             raise BoardNotFound(slug_or_id)
     if board is None:
         # your own board always wins over a shared board with the same slug
-        board = db.scalar(select(Board).where(Board.owner_id == user.id, Board.slug == slug))
+        board = db.scalar(select(Board).where(Board.owner_id == user.id, Board.slug == slug, Board.deleted_at.is_(None)))
     if board is None:
         # …otherwise the oldest board you were given with that slug (the
         # qualified form above addresses any of them explicitly)
         board = db.scalar(
             select(Board)
             .join(BoardMembership, BoardMembership.board_id == Board.id)
-            .where(Board.slug == slug, BoardMembership.user_id == user.id, BoardMembership.accepted.is_(True))
+            .where(Board.slug == slug, Board.deleted_at.is_(None), BoardMembership.user_id == user.id, BoardMembership.accepted.is_(True))
             .order_by(BoardMembership.created_at, Board.created_at)
         )
-    if board is None:
+    if board is None or board.deleted_at is not None:
         raise BoardNotFound(slug_or_id)
     m = membership_for(db, board, user)
     if m is None:
@@ -268,6 +268,8 @@ def board_settings(board: Board) -> Dict:
         return {}
 
 
-def delete_board(db: Session, board: Board) -> None:
-    db.delete(board)
+def delete_board(db: Session, board: Board, *, deleted_by_id: str) -> None:
+    board.is_archived = True
+    board.deleted_at = utcnow()
+    board.deleted_by_id = deleted_by_id
     db.flush()

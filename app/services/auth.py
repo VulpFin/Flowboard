@@ -192,6 +192,15 @@ def revoke_other_sessions(db: Session, user: User, keep_session_id: str) -> int:
     return n
 
 
+def revoke_all_sessions(db: Session, user: User) -> int:
+    """Invalidate every active session; used for an operator-led incident response."""
+    n = 0
+    for s in db.scalars(select(UserSession).where(UserSession.user_id == user.id, UserSession.revoked_at.is_(None))):
+        s.revoked_at = utcnow()
+        n += 1
+    return n
+
+
 # --- password reset -----------------------------------------------------
 
 def create_password_reset(db: Session, user: User, ttl_minutes: int = 60) -> str:

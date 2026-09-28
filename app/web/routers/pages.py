@@ -14,10 +14,12 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, Request
+from fastapi.responses import PlainTextResponse, Response
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from ... import __version__
+from ...config import settings
 from ...db import get_db
 from ...ai.registry import list_specs
 from ...calendars.providers import CALENDAR_PROVIDERS, GOOGLE_CALENDAR_SCOPES
@@ -32,13 +34,58 @@ from ..mdlite import md_lite
 router = APIRouter(tags=["pages"])
 
 # One place to bump when the policies change; every policy page shows it.
-POLICY = {"effective": "2026-09-16", "updated": "2026-09-16", "version": "1.1"}
+POLICY = {"effective": "2026-09-27", "updated": "2026-09-27", "version": "1.2"}
 
 CHANGELOG = Path(__file__).resolve().parents[3] / "CHANGELOG.md"
 
+SEO_PAGES = {
+    "home": "Plan work around real time with boards, schedules, calendar-aware capacity, and the services you choose to connect.",
+    "about": "Learn about Vulpfin Flowboard, a planning workspace for personal and shared work.",
+    "faq": "Answers to common questions about Flowboard planning, boards, calendars, privacy, and connected services.",
+    "guidelines": "Flowboard community and product-use guidelines.",
+    "third_party_services": "How Flowboard's optional calendar and AI provider integrations handle your data.",
+    "privacy": "Flowboard privacy policy and data-handling commitments.",
+    "terms": "Flowboard terms of service.",
+    "changelog": "Flowboard release notes and product changes.",
+}
+
 
 def _page(request: Request, name: str, extra: Optional[Dict[str, Any]] = None):
-    return deps.render(request, f"pages/{name}.html", {"policy": POLICY, **(extra or {})})
+    return deps.render(request, f"pages/{name}.html", {
+        "policy": POLICY,
+        "seo_indexable": name in SEO_PAGES,
+        "meta_description": SEO_PAGES.get(name, ""),
+        **(extra or {}),
+    })
+
+
+@router.get("/robots.txt", include_in_schema=False)
+def robots_txt():
+    body = "\n".join((
+        "User-agent: *",
+        "Allow: /",
+        "Disallow: /admin/",
+        "Disallow: /boards/",
+        "Disallow: /calendar/",
+        "Disallow: /settings/",
+        "Disallow: /auth/",
+        "Disallow: /login",
+        "Disallow: /register",
+        "Disallow: /support",
+        f"Sitemap: {settings.absolute_url('/sitemap.xml')}",
+        "",
+    ))
+    return PlainTextResponse(body)
+
+
+@router.get("/sitemap.xml", include_in_schema=False)
+def sitemap_xml():
+    urls = "".join(
+        f"<url><loc>{settings.absolute_url('/' if name == 'home' else '/' + name)}</loc></url>"
+        for name in SEO_PAGES
+    )
+    body = f'<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">{urls}</urlset>'
+    return Response(body, media_type="application/xml")
 
 
 def _integration_context() -> Dict[str, Any]:

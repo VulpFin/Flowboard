@@ -4,6 +4,9 @@
   <meta charset="utf-8" />
   <title>{% block title %}{{ site_name }}{% endblock %}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  {% if meta_description %}<meta name="description" content="{{ meta_description }}" />{% endif %}
+  <meta name="robots" content="{{ 'index,follow' if seo_indexable else 'noindex,nofollow' }}" />
+  {% if seo_indexable %}<link rel="canonical" href="{{ site_url }}{{ request.url.path }}" />{% endif %}
   <link rel="stylesheet" href="/static/styles.css?v={{ app_version }}" />
   <script src="https://unpkg.com/htmx.org@1.9.12"></script>
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
@@ -29,6 +32,7 @@
           {% if pending_invites %}<a class="linkbtn invites" href="/invites" title="You have board invitations waiting">✉ {{ pending_invites }}</a>{% endif %}
           <a class="linkbtn" href="/settings/ai-providers" title="AI providers">AI</a>
           <a class="linkbtn" href="/settings/account" title="Settings">Settings</a>
+          {% if user.is_staff %}<a class="linkbtn" href="/admin" title="Platform administration">Admin</a>{% endif %}
           <form method="post" action="/logout" style="display:inline"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="linkbtn" type="submit" title="Sign out {{ user.username }}">Sign out</button></form>
         </nav>
       </div>

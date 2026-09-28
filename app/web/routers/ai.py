@@ -12,7 +12,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from ...ai import assistant, credentials as cred_service, usage as usage_service
-from ...ai.client import available_models, resolve_model
+from ...ai.client import available_models, is_model_ref_eligible, is_text_chat_model, resolve_model
 from ...ai.registry import PROVIDERS, get_spec, list_specs
 from ...ai.types import ProviderError
 from ...db import get_db
@@ -99,7 +99,7 @@ def provider_form(request: Request, provider: str, user: User = Depends(deps.get
     except KeyError:
         raise HTTPException(404, "Unknown provider")
     cred = cred_service.get_credential(db, user, provider)
-    models = cred_service.models_for_credential(db, cred) if cred else []
+    models = [m for m in cred_service.models_for_credential(db, cred) if is_model_ref_eligible(db, user, f"{provider}:{m.id}")] if cred else []
     groups = {}
     for m in models:
         groups.setdefault(m.family, []).append(m)
@@ -120,12 +120,15 @@ async def provider_save(request: Request, provider: str, user: User = Depends(de
     except ValueError as exc:
         return deps.redirect(f"/settings/ai-providers/{provider}?err={exc}")
     if form.get("default_model") is not None:
-        cred.default_model = str(form.get("default_model", ""))[:160]
+        default_model = str(form.get("default_model", ""))[:160]
+        if default_model and not is_model_ref_eligible(db, user, f"{provider}:{default_model}"):
+            return deps.redirect(f"/settings/ai-providers/{provider}?err=Choose+a+text+chat+model+for+Flowboard")
+        cred.default_model = default_model
     result = cred_service.test_credential(db, cred)
     if result["ok"]:
         if not cred.default_model:
             models = cred_service.cached_models(cred)
-            chat_models = [m for m in models if "embedding" not in m.tags and "image" not in m.tags and "audio" not in m.tags]
+            chat_models = [m for m in models if is_text_chat_model(m)]
             if chat_models:
                 cred.default_model = chat_models[0].id
         if user.profile and not user.profile.default_ai_model and cred.default_model:
@@ -159,7 +162,10 @@ def provider_default_model(provider: str, default_model: str = Form(""), user: U
     cred = cred_service.get_credential(db, user, provider)
     if cred is None:
         raise HTTPException(404, "No credentials for that provider")
-    cred.default_model = default_model.strip()[:160]
+    selected = default_model.strip()[:160]
+    if selected and not is_model_ref_eligible(db, user, f"{provider}:{selected}"):
+        return deps.redirect(f"/settings/ai-providers/{provider}?err=Choose+a+text+chat+model+for+Flowboard")
+    cred.default_model = selected
     return deps.redirect(f"/settings/ai-providers/{provider}?msg=Default+model+saved")
 
 

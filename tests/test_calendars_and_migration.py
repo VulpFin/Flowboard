@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 import json
+from datetime import date, datetime, timezone
 
 from app.calendars import feeds, ics
 from app.calendars import links as cal_links
@@ -109,6 +110,51 @@ def test_push_and_sync_with_fake_provider(db, alice, monkeypatch):
     task_service.update_task(db, board, t, {"due": None})
     cal_links.sync_task_links(db, t, board)
     assert "e1" not in events and cal_links.links_for_task(db, t)[0].sync_status == "orphaned"
+
+
+def test_scheduled_task_pushes_a_timed_calendar_event(db, alice, monkeypatch):
+    from app.calendars import providers as prov_mod
+
+    class FakeProvider(prov_mod.CalendarProvider):
+        id = "google"
+        name = "Fake"
+
+        def list_calendars(self, token):
+            return [{"id": "primary", "name": "Primary", "primary": True}]
+
+        def create_event(self, token, calendar_id, event):
+            return {"id": "scheduled-event", "url": ""}
+
+    monkeypatch.setattr(cal_links, "get_provider", lambda _provider_id: FakeProvider())
+    board = board_service.list_boards_for_user(db, alice)[0]
+    task = task_service.create_task(db, board, {"title": "Scheduled work", "estimate_min": 45})
+    task.scheduled_date, task.scheduled_start = date(2026, 10, 5), "09:15"
+    conn = cal_links.store_connection(db, alice, "google", {"access_token": "x", "expires_at": 9999999999}, {"email": "a", "id": "1"}, "s")
+
+    link = cal_links.push_task(db, alice, board, task, conn)
+
+    assert link.external_event_id == "scheduled-event"
+    payload = cal_links.event_payload(task, board)
+    assert payload["all_day"] is False
+    assert payload["start"] == datetime(2026, 10, 5, 9, 15)
+    assert payload["end"] == datetime(2026, 10, 5, 10, 0)
+
+
+def test_availability_renders_in_the_member_timezone(client, db, alice, monkeypatch):
+    from app.calendars import busy
+
+    alice.profile.timezone = "America/New_York"
+    conn = cal_links.store_connection(db, alice, "google", {"access_token": "x", "expires_at": 9999999999}, {"email": "a", "id": "1"}, "s")
+    conn.target_calendar_name = "Work"
+    db.commit()
+    monkeypatch.setattr(busy, "connection_intervals", lambda *_args: [(datetime(2026, 10, 5, 14, 0, tzinfo=timezone.utc), datetime(2026, 10, 5, 15, 30, tzinfo=timezone.utc))])
+
+    client.login("alice@example.com")
+    response = client.get(f"/calendar/connections/{conn.id}/availability")
+
+    assert response.status_code == 200
+    assert "Work" in response.text and "America/New_York" in response.text
+    assert "Mon Oct 05, 10:00" in response.text and "11:30" in response.text
 
 
 def test_legacy_import_creates_default_board_tasks(db, alice, tmp_path):

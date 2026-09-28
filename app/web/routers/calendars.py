@@ -21,6 +21,7 @@ from ...config import settings
 from ...db import get_db
 from ...models import Board, User
 from ...services import boards as board_service
+from ...services import clock
 from ...services import tasks as task_service
 from .. import deps
 
@@ -139,7 +140,13 @@ def availability(request: Request, conn_id: str, user: User = Depends(deps.get_c
         intervals = calendar_busy.connection_intervals(db, conn, start, end)
     except CalendarProviderError as exc:
         return deps.render(request, "settings/_availability.html", {"connection": conn, "error": public_error_message(get_provider(conn.provider), exc)})
-    return deps.render(request, "settings/_availability.html", {"connection": conn, "intervals": intervals})
+    tz = clock.tz_for(user)
+    timezone_name = getattr(tz, "key", None) or (user.profile.timezone if user.profile else "UTC")
+    return deps.render(request, "settings/_availability.html", {
+        "connection": conn,
+        "intervals": [(busy_start.astimezone(tz), busy_end.astimezone(tz)) for busy_start, busy_end in intervals],
+        "timezone_name": timezone_name,
+    })
 
 
 @router.post("/calendar/connections/{conn_id}/disconnect", dependencies=[Depends(deps.csrf_protect)])

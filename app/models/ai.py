@@ -35,6 +35,9 @@ class AIProviderCredential(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     config_json: Mapped[str] = mapped_column(Text, default="{}", nullable=False)  # base_url, org, project...
     default_model: Mapped[str] = mapped_column(String(160), default="", nullable=False)
     enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    # The encrypted blob remains inaccessible until an operator restores it.
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    deleted_by_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
     last_validated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     validation_status: Mapped[str] = mapped_column(String(16), default="unknown", nullable=False)  # unknown|valid|invalid|error
     validation_message: Mapped[str] = mapped_column(String(300), default="", nullable=False)
@@ -86,3 +89,32 @@ class AIChangeSet(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     status: Mapped[str] = mapped_column(String(16), default="proposed", nullable=False)  # proposed|applied|rejected|partial|expired
     applied_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     result_json: Mapped[str] = mapped_column(Text, default="{}", nullable=False)
+
+
+class IPBlock(UUIDPrimaryKeyMixin, Base):
+    """A staff-managed source-address or CIDR block for the web application."""
+
+    __tablename__ = "ip_blocks"
+    __table_args__ = (UniqueConstraint("cidr", name="uq_ip_block_cidr"),)
+
+    cidr: Mapped[str] = mapped_column(String(64), nullable=False)
+    reason: Mapped[str] = mapped_column(String(300), default="", nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    created_by_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
+    revoked_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    revoked_by_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
+
+
+class AdminAuditEvent(UUIDPrimaryKeyMixin, Base):
+    """Non-secret operator action log for account and abuse-control changes."""
+
+    __tablename__ = "admin_audit_events"
+    __table_args__ = (Index("ix_admin_audit_subject_time", "subject_type", "subject_id", "created_at"),)
+
+    actor_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
+    action: Mapped[str] = mapped_column(String(64), nullable=False)
+    subject_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    subject_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    detail: Mapped[str] = mapped_column(String(500), default="", nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)

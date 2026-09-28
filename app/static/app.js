@@ -230,13 +230,14 @@
     if (picker) {
       const badge = document.getElementById('model-badge');
       const defaultRef = badge ? (badge.dataset.defaultRef || '') : '';
+      const defaultSource = badge ? (badge.dataset.defaultSource || '') : '';
       const names = {};
       // the badge always names the model this request will actually use, so the
       // heading and the picker can never tell you two different things
       function showModel(ref) {
         if (!badge) return;
         badge.textContent = names[ref] || ref;
-        badge.title = (ref === defaultRef ? 'Model this request will use (board \u2192 account \u2192 provider default): ' : 'Model this request will use: ') + ref;
+        badge.title = (ref === defaultRef ? 'Default source: ' + defaultSource + '. Model this request will use: ' : 'Model this request will use: ') + ref;
       }
       showModel(defaultRef);
       fetch('/api/ai/models', { credentials: 'same-origin' }).then((r) => r.json()).then(function (data) {
@@ -259,7 +260,7 @@
         manage.textContent = '\u2699 Manage providers\u2026';
         picker.appendChild(manage);
         const def = picker.querySelector('option[value=""]');
-        if (def && names[defaultRef]) def.textContent = 'Default (' + names[defaultRef] + ')';
+        if (def && names[defaultRef]) def.textContent = 'Default (' + names[defaultRef] + (defaultSource ? ' · ' + defaultSource : '') + ')';
         // a fresh page starts on the default, whatever the browser restored
         picker.value = '';
         showModel(defaultRef);

@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block title %}Network controls · Admin · {{ site_name }}{% endblock %}
+{% block content %}
+<p><a href="/admin">← Accounts</a></p>
+<section class="admin-head"><div><p class="eyebrow">Platform administration</p><h1>Network controls</h1><p class="muted">Active rules deny an exact IP address or CIDR range before it reaches Flowboard.</p></div></section>
+<section class="panel"><h2>Block address or range</h2><form class="admin-search" method="post" action="/admin/network/blocks"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><label>IP address or CIDR <input name="cidr" placeholder="203.0.113.45 or 203.0.113.0/24" required></label><label>Reason <input name="reason" maxlength="300" placeholder="Optional incident note"></label><button class="danger" type="submit">Block</button></form></section>
+<section class="panel"><h2>Recorded blocks</h2><div class="tablewrap"><table class="table"><thead><tr><th>Range</th><th>Reason</th><th>State</th><th>Created</th><th></th></tr></thead><tbody>{% for block in blocks %}<tr><td><code>{{ block.cidr }}</code></td><td>{{ block.reason or "—" }}</td><td>{% if block.is_active %}<span class="tag bad">active</span>{% else %}<span class="tag">revoked</span>{% endif %}</td><td class="small muted">{{ block.created_at }}</td><td>{% if block.is_active %}<form method="post" action="/admin/network/blocks/{{ block.id }}/revoke"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button>Unblock</button></form>{% endif %}</td></tr>{% else %}<tr><td colspan="5" class="muted">No blocks have been recorded.</td></tr>{% endfor %}</tbody></table></div></section>
+{% endblock %}

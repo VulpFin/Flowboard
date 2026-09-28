@@ -222,8 +222,12 @@ def infer_tags(model_id: str, family: str = "") -> List[str]:
         return ["embedding"]
     if any(k in m for k in ("dall-e", "image", "sd3", "stable-diffusion", "flux", "imagen", "gpt-image")):
         return ["image"]
-    if any(k in m for k in ("whisper", "tts", "audio", "transcri")):
+    if any(k in m for k in ("whisper", "tts", "audio", "speech", "transcri")):
         return ["audio"]
+    if any(k in m for k in ("computer-use", "computer_use", "computeruse")):
+        return ["computer"]
+    if any(k in m for k in ("video", "veo")):
+        return ["video"]
     if re.search(r"(^|[-/:])o[1-9](-|$)|reason|think|r1|deepseek-reasoner|qwq|grok-.*(mini)?-?(reason|think)|gemini-.*thinking|claude-(opus|sonnet)-4|gpt-5", m):
         tags.append("reasoning")
     if any(k in m for k in ("mini", "flash", "haiku", "nano", "small", "8b", "instant", "lite", "turbo", "fast")):

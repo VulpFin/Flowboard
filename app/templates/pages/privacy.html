@@ -51,26 +51,51 @@
 
   <h2 id="google-calendar">3. Google Calendar and Google API Services</h2>
   <p>
-    Google Calendar is optional. If you connect it, Flowboard requests
-    <code>https://www.googleapis.com/auth/calendar.readonly</code> to list calendars and read
-    busy availability, and <code>https://www.googleapis.com/auth/calendar.events</code> to create,
-    update, or delete an event when you explicitly perform that action from a Flowboard task.
+    Google Calendar is optional. Flowboard accesses Google Calendar data only after you choose to
+    connect Google Calendar and only to provide the calendar features you request.
+  </p>
+
+  <h3>Google user data we access</h3>
+  <p>
+    Flowboard requests <code>https://www.googleapis.com/auth/calendar.readonly</code> to identify
+    calendars you can access and retrieve busy time ranges. It requests
+    <code>https://www.googleapis.com/auth/calendar.events</code> to create, update, or delete a
+    Google Calendar event when you explicitly perform that action from a Flowboard task. Flowboard
+    receives calendar-list metadata (including calendar names and identifiers), busy interval start
+    and end times, and OAuth access and refresh tokens. It does not import Google Calendar event
+    titles, attendees, descriptions, or other event content as Flowboard tasks.
+  </p>
+
+  <h3>How Flowboard uses Google user data</h3>
+  <p>
+    Flowboard uses this data only to let you choose a calendar, show availability, avoid scheduling
+    work over busy time, and perform the create, update, or delete action you explicitly requested.
+    Flowboard does not use Google user data for advertising, profiling, credit decisions, data
+    brokerage, surveillance, or any unrelated purpose.
+  </p>
+
+  <h3>Sharing, transfer, and disclosure of Google user data</h3>
+  <p>
+    Flowboard does not sell, rent, or share raw Google Calendar data with third parties. It does
+    not send Google Calendar event titles, attendees, descriptions, calendar identifiers, or OAuth
+    tokens to AI providers. When you explicitly ask Flowboard's assistant to schedule work,
+    Flowboard may send the AI provider you selected with your own credential derived daily
+    busy-minute totals solely to provide that requested scheduling feature. Those totals do not
+    include event content, calendar identifiers, or OAuth credentials. Google user data may also
+    be disclosed if required by law or necessary to protect the service and its users.
+  </p>
+
+  <h3>Storage, retention, and deletion</h3>
+  <p>
+    Flowboard stores the selected calendar list and caches busy time intervals for up to 15 minutes.
+    Google access and refresh tokens remain only while the connection exists and are encrypted at
+    rest. Disconnecting deletes Flowboard's local connection, tokens, availability cache, and event
+    links, and makes a best-effort request to revoke the Google credential. Disconnecting does not
+    delete events that already exist in Google Calendar.
   </p>
   <p>
-    Flowboard does not import Google Calendar events as Flowboard tasks and does not retain event
-    titles, attendees, or descriptions from Google. It stores the selected calendar list and
-    caches busy time intervals for up to 15 minutes. Google access and refresh tokens remain only
-    while the connection exists and are encrypted at rest. Disconnecting deletes Flowboard's local
-    connection, tokens, availability cache, and event links, and makes a best-effort request to
-    revoke the Google credential. Disconnecting does not delete events that already exist in
-    Google Calendar.
-  </p>
-  <p>
-    Google Calendar event content is not sent to AI providers. If you ask Flowboard's assistant to
-    schedule work, its request may include derived daily busy-minute totals so it can avoid meetings;
-    it never includes Google event titles, attendees, descriptions, calendar identifiers, or OAuth
-    tokens. Flowboard does not use Google Workspace API data to train or improve generalized or
-    foundation AI models.
+    Flowboard does not use Google Workspace API data, whether raw or derived, to develop, improve,
+    or train generalized or foundation AI or machine-learning models.
   </p>
   <p>
     The use of raw or derived user data received from Google Workspace APIs will adhere to the

@@ -107,6 +107,13 @@ def get_current_user(request: Request, user: Optional[User] = Depends(get_curren
     return user
 
 
+def get_current_staff(user: User = Depends(get_current_user)) -> User:
+    """Require an active site-staff account for platform administration."""
+    if not user.is_staff:
+        raise HTTPException(status_code=403, detail="Staff access required")
+    return user
+
+
 def csrf_token_for(request: Request) -> str:
     """Token to embed in forms: the session's token if logged in, otherwise a
     double-submit cookie token (created on demand)."""

@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, Form, Request
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ...ai.client import available_models
+from ...ai.client import available_models, is_model_ref_eligible
 from ...config import settings as app_settings
 from ...db import get_db
 from ...models import IdentityLink, User, UserSession
@@ -141,9 +141,15 @@ def ai_defaults_page(request: Request, user: User = Depends(deps.get_current_use
 @router.post("/ai-defaults", dependencies=[Depends(deps.csrf_protect)])
 def ai_defaults_save(default_ai_model: str = Form(""), ai_fallback_enabled: Optional[str] = Form(None), ai_fallback_model: str = Form(""), ai_auto_tag_on_create: Optional[str] = Form(None), ai_usage_tracking: Optional[str] = Form(None), user: User = Depends(deps.get_current_user), db: Session = Depends(get_db)):
     p = user.profile
-    p.default_ai_model = default_ai_model.strip()[:200]
+    selected = default_ai_model.strip()[:200]
+    fallback = ai_fallback_model.strip()[:200]
+    if selected and not is_model_ref_eligible(db, user, selected):
+        return deps.redirect("/settings/ai-defaults?err=Choose+a+text+chat+model+for+your+default")
+    if fallback and not is_model_ref_eligible(db, user, fallback):
+        return deps.redirect("/settings/ai-defaults?err=Choose+a+text+chat+model+for+your+fallback")
+    p.default_ai_model = selected
     p.ai_fallback_enabled = bool(ai_fallback_enabled)
-    p.ai_fallback_model = ai_fallback_model.strip()[:200]
+    p.ai_fallback_model = fallback
     p.ai_auto_tag_on_create = bool(ai_auto_tag_on_create)
     p.ai_usage_tracking = bool(ai_usage_tracking)
     return deps.redirect("/settings/ai-defaults?msg=Saved")

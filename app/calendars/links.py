@@ -6,7 +6,7 @@ AES-GCM envelope as AI credentials (AAD binds them to the owning user)."""
 from __future__ import annotations
 
 import json
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, time, timedelta
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy import select
@@ -121,12 +121,21 @@ def disconnect(db: Session, conn: CalendarConnection) -> None:
 
 def event_payload(task: Task, board: Board, *, timezone: str = "UTC", default_duration_min: int = 60) -> Dict[str, Any]:
     due = task.due_at or parse_due(task.due)
-    if due is None:
-        raise ValueError("Task has no due date - set one before adding it to a calendar")
-    all_day = bool(task.due and len(task.due) <= 10)
+    scheduled = task.scheduled_date
+    if due is None and scheduled is None:
+        raise ValueError("Task needs a due date or scheduled day before adding it to a calendar")
+    all_day = bool(due and task.due and len(task.due) <= 10) or (due is None and not task.scheduled_start)
     if all_day:
-        start: Any = due.date()
-        end: Any = due.date() + timedelta(days=1)
+        event_day = due.date() if due is not None else scheduled
+        start: Any = event_day
+        end: Any = event_day + timedelta(days=1)
+    elif due is None:
+        try:
+            scheduled_time = time.fromisoformat(task.scheduled_start)
+        except (TypeError, ValueError):
+            scheduled_time = time.min
+        start = datetime.combine(scheduled, scheduled_time)
+        end = start + timedelta(minutes=max(5, task.estimate_min or default_duration_min))
     else:
         duration = max(5, task.estimate_min or default_duration_min)
         start, end = due - timedelta(minutes=duration), due
@@ -186,9 +195,9 @@ def sync_task_links(db: Session, task: Task, board: Board, *, timezone: str = "U
         try:
             provider = get_provider(conn.provider)
             token = fresh_token(db, conn, provider)
-            if task.due_at is None:
+            if task.due_at is None and task.scheduled_date is None:
                 provider.delete_event(token, link.external_calendar_id, link.external_event_id)
-                link.sync_status, link.last_error = "orphaned", "task lost its due date; event removed"
+                link.sync_status, link.last_error = "orphaned", "task lost its date; event removed"
             else:
                 provider.update_event(token, link.external_calendar_id, link.external_event_id, event_payload(task, board, timezone=timezone))
                 link.sync_status, link.last_error, link.last_synced_at = "synced", "", utcnow()

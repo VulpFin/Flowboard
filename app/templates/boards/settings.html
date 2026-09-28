@@ -77,10 +77,10 @@
   {% if feed and not feed.revoked_at %}<p class="muted small">A subscription feed exists (prefix <code>{{ feed.token_prefix }}…</code>). Manage it in <a href="/settings/calendars">Calendars</a>.</p>{% else %}<p class="muted small">No feed. Create one in <a href="/settings/calendars">Calendars</a>.</p>{% endif %}
   <h3>Danger zone</h3>
   <form method="post" action="/boards/{{ board_ref }}/archive" style="display:inline"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button>{{ 'Restore' if board.is_archived else 'Archive' }} board</button></form>
-  <form method="post" action="/boards/{{ board_ref }}/delete" class="row" onsubmit="return confirm('Delete this board and ALL its tasks? This cannot be undone.')">
+  <form method="post" action="/boards/{{ board_ref }}/delete" class="row" onsubmit="return confirm('Remove this board from normal access? A staff administrator can restore it while retained.')">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <input name="confirm" placeholder="type {{ board.slug }} to confirm">
-    <button class="danger">Delete board</button>
+    <button class="danger">Remove board</button>
   </form>
   <form hx-post="/boards/{{ board_ref }}/tasks/clear" hx-confirm="Delete ALL tasks on this board (including completed)?" hx-target="#void" style="margin-top:.5rem"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="danger">Clear all tasks</button></form>
   <div id="void" hidden></div>

@@ -1,5 +1,31 @@
 # Changelog
 
+## 2.6.4 — 2026-09-27
+
+* **Explicit Google data disclosure.** The privacy policy now separately identifies Google Calendar data accessed, the requested calendar features it provides, the limited user-directed derived busy-time disclosure to a selected AI provider, storage and deletion, and the prohibition on selling Google data or training generalized AI models.
+
+## 2.6.3 — 2026-09-17
+
+* **Calendar time clarity.** “Show availability” now identifies the selected calendar and renders its busy windows in the member's configured timezone rather than raw UTC. A task placed by Flowboard's scheduler can also be added to a calendar: a scheduled time becomes a timed event for the task estimate, while a scheduled day without a time becomes an all-day event.
+* **Search discovery basics.** Public product and policy pages now supply canonical URLs, descriptions, and crawler directives. `/robots.txt` advertises `/sitemap.xml`, which lists the stable public pages for Google Search Console and other search engines.
+
+## 2.6.2 — 2026-09-17
+
+* **Only text-chat models reach the planner.** Model pickers and saved defaults now exclude embeddings, audio/speech, image, video, and Computer Use-only models. The resolver independently rejects an incompatible saved or per-request model reference, so an obsolete setting cannot send a planning request to Gemini Computer Use. The assistant picker now identifies whether its effective default comes from a board override, account default, or provider default.
+
+## 2.6.1 — 2026-09-17
+
+* **Step-up protection for permanent deletion.** A recoverably deleted account can be permanently purged only after the staff operator completes a fresh TG11 `prompt=login` flow, including TG11 MFA where that account requires it. The approval is attached to that exact target account and expires after 15 minutes; the final form also requires the target email as a deliberate confirmation.
+
+## 2.6.0 — 2026-09-17
+
+* **Recovery and incident controls.** New staff tools can force an account to sign out on every device, place an account into recoverable deletion, restore accounts, boards, and post-release AI credentials, and maintain an operator audit trail without exposing secrets. Future board and AI credential removals are soft deletions; historic hard deletes still require restoration from a verified backup.
+* **Application abuse blocks.** Staff can block an exact IPv4/IPv6 address or CIDR range before requests reach the app, retain a reason, and revoke the block when the incident closes. The current operator cannot accidentally block their own address or the whole Internet.
+
+## 2.5.2 — 2026-09-16
+
+* **Staff account administration.** Active staff can now use `/admin` to find accounts, inspect non-sensitive account and linked-identity metadata, activate or suspend accounts, mark an address verified, and grant or revoke staff access. The interface never displays password hashes, active sessions, API keys, calendar credentials, or OAuth tokens. It also protects an administrator from changing their own staff/sign-in status and protects the last active staff account from being removed.
+
 ## 2.5.1 — 2026-09-16
 
 * **A public front door.** The root route now explains what Flowboard is to signed-out visitors instead of redirecting them to a board. Signed-in members see a practical home with their recent boards, calendar connections, and quick links.

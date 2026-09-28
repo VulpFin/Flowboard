@@ -62,7 +62,7 @@
                 <button class="mini" title="Assign">Assign</button>
               </form>
               {% endif %}
-              {% if t.due and connections %}
+      {% if (t.due or t.scheduled_date) and connections %}
               <form hx-post="/boards/{{ board_ref }}/tasks/{{ t.id }}/calendar" hx-target="#board" hx-swap="outerHTML" style="display:inline">
                 <select name="connection_id" title="Add to calendar" class="mini">{% for c in connections %}<option value="{{ c.id }}">{{ c.provider|capitalize }}{% if c.target_calendar_name %} · {{ c.target_calendar_name }}{% endif %}</option>{% endfor %}</select>
                 <button title="Create/update the event in the selected calendar">+ Calendar</button>

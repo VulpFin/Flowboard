@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}{{ account.email }} · Admin · {{ site_name }}{% endblock %}
+{% block content %}
+<p><a href="/admin">← Accounts</a></p>
+<section class="admin-head">
+  <div><p class="eyebrow">Account administration</p><h1>{{ account.display_name or account.username }}</h1><p class="muted">{{ account.email }} · @{{ account.username }}</p></div>
+  <div class="row">{% if account.is_active %}<span class="tag ok">{{ account.state }}</span>{% else %}<span class="tag bad">{{ account.state }}</span>{% endif %}{% if account.is_staff %}<span class="tag ok">staff</span>{% endif %}</div>
+</section>
+<div class="grid2 admin-grid">
+  <section class="panel">
+    <h2>Account</h2>
+    <dl class="account-details">
+      <div><dt>Email</dt><dd>{{ account.email }} {% if account.email_verified_at %}<span class="tag ok">verified</span>{% else %}<span class="tag bad">unverified</span>{% endif %}</dd></div>
+      <div><dt>Username</dt><dd>@{{ account.username }}</dd></div>
+      <div><dt>Created</dt><dd>{{ account.created_at }}</dd></div>
+      <div><dt>Last sign-in</dt><dd>{{ account.last_login_at or "Never" }}</dd></div>
+      <div><dt>Owned boards</dt><dd>{{ board_count }}</dd></div>
+      <div><dt>Local password</dt><dd>{% if account.has_password %}Configured{% else %}Not configured{% endif %}</dd></div>
+    </dl>
+  </section>
+  <section class="panel">
+    <h2>Access controls</h2>
+    {% if is_self %}
+      <p class="muted">This is your own account. Its staff role and sign-in status are protected here to avoid locking out the administrator.</p>
+    {% else %}
+      <div class="admin-actions">
+        <form method="post" action="/admin/users/{{ account.id }}" onsubmit="return confirm('Sign this account out on every device?')"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button name="action" value="sign_out_all" type="submit">Sign out all clients</button></form>
+        {% if account.deleted_at %}
+          <form method="post" action="/admin/users/{{ account.id }}"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="primary" name="action" value="restore_account" type="submit">Restore account</button></form>
+          {% if can_permanently_delete %}
+            <form method="post" action="/admin/users/{{ account.id }}/purge" class="row"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input name="confirm" placeholder="Type {{ account.email }}" required><button class="danger" type="submit">Permanently delete</button></form>
+          {% else %}
+            <a class="btn danger" href="/admin/users/{{ account.id }}/purge/reauth">Reauthenticate with TG11 to permanently delete</a>
+          {% endif %}
+        {% else %}
+          <form method="post" action="/admin/users/{{ account.id }}"><input type="hidden" name="csrf_token" value="{{ csrf_token }}">{% if account.is_active %}<button class="danger" name="action" value="suspend" type="submit">Suspend account</button>{% else %}<button class="primary" name="action" value="activate" type="submit">Activate account</button>{% endif %}</form>
+          {% if not account.email_verified_at %}<form method="post" action="/admin/users/{{ account.id }}"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button name="action" value="verify_email" type="submit">Mark email verified</button></form>{% endif %}
+          <form method="post" action="/admin/users/{{ account.id }}"><input type="hidden" name="csrf_token" value="{{ csrf_token }}">{% if account.is_staff %}<button name="action" value="revoke_staff" type="submit">Revoke staff</button>{% else %}<button class="primary" name="action" value="grant_staff" type="submit">Grant staff</button>{% endif %}</form>
+          <form method="post" action="/admin/users/{{ account.id }}" onsubmit="return confirm('Remove this account from access? It can be restored by staff while retained.')"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="danger" name="action" value="delete_account" type="submit">Remove account</button></form>
+        {% endif %}
+      </div>
+    {% endif %}
+    <p class="muted small">Suspending blocks future sign-ins. Permanent deletion requires a fresh TG11 sign-in, is tied to this account for 15 minutes, and cannot be undone.</p>
+  </section>
+</div>
+<section class="panel">
+  <h2>Recoverable data</h2>
+  {% if deleted_boards or deleted_credentials %}
+    {% for deleted_board in deleted_boards %}<div class="recovery-row"><span><strong>Board</strong> · {{ deleted_board.name }}<br><span class="muted small">Removed {{ deleted_board.deleted_at }}</span></span><form method="post" action="/admin/boards/{{ deleted_board.id }}"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="primary" name="action" value="restore">Restore board</button></form></div>{% endfor %}
+    {% for credential in deleted_credentials %}<div class="recovery-row"><span><strong>AI credential</strong> · {{ credential.provider }} {% if credential.label %}({{ credential.label }}){% endif %}<br><span class="muted small">Removed {{ credential.deleted_at }} · encrypted secret remains hidden</span></span><form method="post" action="/admin/credentials/{{ credential.id }}"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="primary" name="action" value="restore">Restore credential</button></form></div>{% endfor %}
+  {% else %}<p class="muted">No recoverable boards or AI credentials are retained for this account.</p>{% endif %}
+  <p class="muted small">Only records deleted after this release are recoverable here. Earlier hard-deleted data requires a verified database-backup restore.</p>
+</section>
+<section class="panel">
+  <h2>Linked identities</h2>
+  {% if identity_links %}
+  <div class="tablewrap"><table class="table"><thead><tr><th>Provider</th><th>Linked email</th><th>Status</th><th>Linked</th></tr></thead><tbody>{% for link in identity_links %}<tr><td>{{ link.provider }}</td><td>{{ link.email_at_link or "Not recorded" }}</td><td><span class="tag {% if link.migration_status == 'linked' %}ok{% endif %}">{{ link.migration_status }}</span></td><td class="small muted">{{ link.linked_at }}</td></tr>{% endfor %}</tbody></table></div>
+  {% else %}<p class="muted">No external identities are linked to this account.</p>{% endif %}
+</section>
+{% if audit_events %}<section class="panel"><h2>Recent operator actions</h2><ul class="plain small">{% for event in audit_events %}<li>{{ event.created_at }} · {{ event.action }}</li>{% endfor %}</ul></section>{% endif %}
+{% endblock %}
